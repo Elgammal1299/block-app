@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Block App</string>
+    <string name="accessibility_service_description">This service is required to monitor and block apps during your focus time. It helps you stay focused by preventing access to distracting apps.</string>
+
+    <!-- Block Overlay -->
+    <string name="blocked_app_title">App Blocked</string>
+    <string name="blocked_app_message">This app is blocked during your focus time.</string>
+    <string name="btn_unlock">Unlock</string>
+    <string name="btn_go_home">Go Home</string>
+
+    <!-- Unlock Challenge -->
+    <string name="unlock_challenge_title">Unlock Challenge</string>
+    <string name="math_challenge_hint">Enter your answer</string>
+    <string name="typing_challenge_hint">Type the sentence exactly</string>
+    <string name="timer_challenge_message">Please wait %d seconds...</string>
+    <string name="btn_submit">Submit</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="wrong_answer">Wrong answer! Try again.</string>
+</resources>
