@@ -13,6 +13,9 @@ import 'providers/statistics_provider.dart';
 import 'ui/screens/home_screen.dart';
 import 'ui/screens/permissions_guide_screen.dart';
 import 'ui/screens/app_selection_screen.dart';
+import 'ui/screens/schedule_screen.dart';
+import 'ui/screens/app_schedule_selection_screen.dart';
+import 'data/models/blocked_app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,20 +29,29 @@ void main() async {
   final appRepository = AppRepository(prefsService, platformService);
   final settingsRepository = SettingsRepository(prefsService, platformService);
 
+  // Check if all permissions are granted
+  final hasUsageStats = await platformService.checkUsageStatsPermission();
+  final hasOverlay = await platformService.checkOverlayPermission();
+  final hasAccessibility = await platformService.checkAccessibilityPermission();
+  final allPermissionsGranted = hasUsageStats && hasOverlay && hasAccessibility;
+
   runApp(MyApp(
     appRepository: appRepository,
     settingsRepository: settingsRepository,
+    initialRoute: allPermissionsGranted ? '/home' : '/permissions',
   ));
 }
 
 class MyApp extends StatelessWidget {
   final AppRepository appRepository;
   final SettingsRepository settingsRepository;
+  final String initialRoute;
 
   const MyApp({
     super.key,
     required this.appRepository,
     required this.settingsRepository,
+    this.initialRoute = '/permissions',
   });
 
   @override
@@ -71,11 +83,21 @@ class MyApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-            initialRoute: '/permissions',
+            initialRoute: initialRoute,
             routes: {
               '/permissions': (context) => const PermissionsGuideScreen(),
               '/home': (context) => const HomeScreen(),
               '/app-selection': (context) => const AppSelectionScreen(),
+              '/schedules': (context) => const ScheduleScreen(),
+            },
+            onGenerateRoute: (settings) {
+              if (settings.name == '/app-schedule-selection') {
+                final apps = settings.arguments as List<BlockedApp>;
+                return MaterialPageRoute(
+                  builder: (context) => AppScheduleSelectionScreen(selectedApps: apps),
+                );
+              }
+              return null;
             },
           );
         },

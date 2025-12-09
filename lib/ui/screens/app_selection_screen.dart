@@ -50,7 +50,6 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
   }
 
   Future<void> _saveSelection() async {
-    final blockedAppsProvider = context.read<BlockedAppsProvider>();
     final appListProvider = context.read<AppListProvider>();
 
     // Create BlockedApp objects for selected packages
@@ -64,20 +63,16 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
         appName: appInfo.appName,
         isBlocked: true,
         blockAttempts: 0,
+        scheduleIds: [], // Will be set in next screen
       );
     }).toList();
 
-    // Save to repository
-    await blockedAppsProvider.saveBlockedApps(blockedApps);
-
+    // Navigate to schedule selection screen
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${blockedApps.length} apps blocked successfully!'),
-          backgroundColor: Colors.green,
-        ),
+      Navigator.of(context).pushNamed(
+        '/app-schedule-selection',
+        arguments: blockedApps,
       );
-      Navigator.of(context).pop();
     }
   }
 

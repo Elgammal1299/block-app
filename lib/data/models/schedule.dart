@@ -17,20 +17,27 @@ class Schedule {
 
   // Create from JSON
   factory Schedule.fromJson(Map<String, dynamic> json) {
-    // Parse time string "HH:mm"
-    final startTimeParts = (json['startTime'] as String).split(':');
-    final endTimeParts = (json['endTime'] as String).split(':');
+    // Parse time - support both string format "HH:mm" and object format {"hour": x, "minute": y}
+    TimeOfDay parseTime(dynamic timeData) {
+      if (timeData is String) {
+        final parts = timeData.split(':');
+        return TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
+      } else if (timeData is Map) {
+        return TimeOfDay(
+          hour: timeData['hour'] as int,
+          minute: timeData['minute'] as int,
+        );
+      }
+      throw FormatException('Invalid time format: $timeData');
+    }
 
     return Schedule(
       id: json['id'] as String,
-      startTime: TimeOfDay(
-        hour: int.parse(startTimeParts[0]),
-        minute: int.parse(startTimeParts[1]),
-      ),
-      endTime: TimeOfDay(
-        hour: int.parse(endTimeParts[0]),
-        minute: int.parse(endTimeParts[1]),
-      ),
+      startTime: parseTime(json['startTime']),
+      endTime: parseTime(json['endTime']),
       daysOfWeek: List<int>.from(json['daysOfWeek'] as List),
       isEnabled: json['isEnabled'] as bool? ?? true,
     );
@@ -40,8 +47,14 @@ class Schedule {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'startTime': _timeToString(startTime),
-      'endTime': _timeToString(endTime),
+      'startTime': {
+        'hour': startTime.hour,
+        'minute': startTime.minute,
+      },
+      'endTime': {
+        'hour': endTime.hour,
+        'minute': endTime.minute,
+      },
       'daysOfWeek': daysOfWeek,
       'isEnabled': isEnabled,
     };

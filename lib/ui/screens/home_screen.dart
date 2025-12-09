@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/blocked_apps_provider.dart';
 import '../../providers/schedule_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../services/platform_channel_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,6 +14,49 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Start monitoring service and sync data automatically
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeService();
+    });
+  }
+
+  Future<void> _initializeService() async {
+    try {
+      // Sync schedules and blocked apps to Native
+      await _syncDataToNative();
+
+      // Start monitoring service
+      final platformService = PlatformChannelService();
+      await platformService.startMonitoringService();
+    } catch (e) {
+      print('Error initializing service: $e');
+    }
+  }
+
+  Future<void> _syncDataToNative() async {
+    try {
+      final scheduleProvider = context.read<ScheduleProvider>();
+      final blockedAppsProvider = context.read<BlockedAppsProvider>();
+
+      // Sync schedules
+      final schedules = scheduleProvider.schedules;
+      final platformService = PlatformChannelService();
+      await platformService.updateSchedules(schedules);
+      print('Synced ${schedules.length} schedules to Native');
+
+      // Sync blocked apps
+      final blockedApps = blockedAppsProvider.blockedApps;
+      final appsJson = jsonEncode(blockedApps.map((app) => app.toJson()).toList());
+      await platformService.updateBlockedAppsJson(appsJson);
+      print('Synced ${blockedApps.length} blocked apps to Native');
+    } catch (e) {
+      print('Error syncing data to Native: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final blockedAppsProvider = context.watch<BlockedAppsProvider>();
@@ -206,10 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Icons.calendar_today,
           Colors.green,
           () {
-            // TODO: Navigate to Schedules
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Schedules coming soon!')),
-            );
+            Navigator.of(context).pushNamed('/schedules');
           },
         ),
         _buildActionCard(

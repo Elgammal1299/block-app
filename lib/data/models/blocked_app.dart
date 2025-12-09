@@ -3,12 +3,14 @@ class BlockedApp {
   final String appName;
   final bool isBlocked;
   final int blockAttempts;
+  final List<String> scheduleIds; // IDs of schedules that apply to this app
 
   BlockedApp({
     required this.packageName,
     required this.appName,
     this.isBlocked = true,
     this.blockAttempts = 0,
+    this.scheduleIds = const [],
   });
 
   // Create from JSON
@@ -18,6 +20,7 @@ class BlockedApp {
       appName: json['appName'] as String,
       isBlocked: json['isBlocked'] as bool? ?? true,
       blockAttempts: json['blockAttempts'] as int? ?? 0,
+      scheduleIds: (json['scheduleIds'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
     );
   }
 
@@ -28,6 +31,7 @@ class BlockedApp {
       'appName': appName,
       'isBlocked': isBlocked,
       'blockAttempts': blockAttempts,
+      'scheduleIds': scheduleIds,
     };
   }
 
@@ -37,12 +41,14 @@ class BlockedApp {
     String? appName,
     bool? isBlocked,
     int? blockAttempts,
+    List<String>? scheduleIds,
   }) {
     return BlockedApp(
       packageName: packageName ?? this.packageName,
       appName: appName ?? this.appName,
       isBlocked: isBlocked ?? this.isBlocked,
       blockAttempts: blockAttempts ?? this.blockAttempts,
+      scheduleIds: scheduleIds ?? this.scheduleIds,
     );
   }
 
@@ -58,6 +64,6 @@ class BlockedApp {
 
   @override
   String toString() {
-    return 'BlockedApp{packageName: $packageName, appName: $appName, isBlocked: $isBlocked, blockAttempts: $blockAttempts}';
+    return 'BlockedApp{packageName: $packageName, appName: $appName, isBlocked: $isBlocked, blockAttempts: $blockAttempts, scheduleIds: $scheduleIds}';
   }
 }

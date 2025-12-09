@@ -1,3 +1,4 @@
+import 'dart:convert';
 import '../models/app_info.dart';
 import '../models/blocked_app.dart';
 import '../local/shared_prefs_service.dart';
@@ -52,9 +53,9 @@ class AppRepository {
   // Sync blocked apps to native Android
   Future<void> _syncBlockedAppsToNative() async {
     final blockedApps = await _prefsService.getBlockedApps();
-    final packageNames =
-        blockedApps.where((app) => app.isBlocked).map((app) => app.packageName).toList();
-    await _platformService.updateBlockedApps(packageNames);
+    // Send full app data as JSON to native side
+    final appsJson = jsonEncode(blockedApps.map((app) => app.toJson()).toList());
+    await _platformService.updateBlockedAppsJson(appsJson);
   }
 
   // Get block attempts for a package

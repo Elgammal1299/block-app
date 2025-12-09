@@ -3,11 +3,14 @@ package com.example.block_app.channels
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import com.example.block_app.utils.AppInfoUtil
 import com.example.block_app.utils.PermissionUtil
+import com.example.block_app.services.AppMonitorService
 
 class AppBlockerChannel(
     private val activity: Activity,
@@ -69,7 +72,13 @@ class AppBlockerChannel(
             // Monitoring Service
             "startMonitoringService" -> {
                 try {
-                    // TODO: Start monitoring service
+                    val intent = Intent(activity, AppMonitorService::class.java)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        activity.startForegroundService(intent)
+                    } else {
+                        activity.startService(intent)
+                    }
+                    Log.d("AppBlockerChannel", "Monitoring service started")
                     result.success(null)
                 } catch (e: Exception) {
                     result.error("ERROR", "Failed to start service: ${e.message}", null)
@@ -78,7 +87,9 @@ class AppBlockerChannel(
 
             "stopMonitoringService" -> {
                 try {
-                    // TODO: Stop monitoring service
+                    val intent = Intent(activity, AppMonitorService::class.java)
+                    activity.stopService(intent)
+                    Log.d("AppBlockerChannel", "Monitoring service stopped")
                     result.success(null)
                 } catch (e: Exception) {
                     result.error("ERROR", "Failed to stop service: ${e.message}", null)
@@ -104,12 +115,32 @@ class AppBlockerChannel(
                 }
             }
 
+            // Update blocked apps with full JSON data
+            "updateBlockedAppsJson" -> {
+                try {
+                    val appsJson = call.argument<String>("appsJson")
+                    if (appsJson != null) {
+                        val prefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
+                        prefs.edit().putString("blocked_apps", appsJson).apply()
+                        Log.d("AppBlockerChannel", "Blocked apps JSON updated: $appsJson")
+                        result.success(null)
+                    } else {
+                        result.error("ERROR", "Apps JSON is null", null)
+                    }
+                } catch (e: Exception) {
+                    result.error("ERROR", "Failed to update blocked apps JSON: ${e.message}", null)
+                }
+            }
+
             // Update schedules
             "updateSchedules" -> {
                 try {
                     val schedules = call.argument<List<Map<String, Any>>>("schedules")
                     if (schedules != null) {
-                        // TODO: Save schedules to SharedPreferences
+                        val prefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
+                        val schedulesJson = org.json.JSONArray(schedules).toString()
+                        prefs.edit().putString("schedules", schedulesJson).apply()
+                        Log.d("AppBlockerChannel", "Schedules updated: $schedulesJson")
                         result.success(null)
                     } else {
                         result.error("ERROR", "Schedules are null", null)

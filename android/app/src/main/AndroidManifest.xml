@@ -72,6 +72,13 @@
                 android:resource="@xml/accessibility_service_config" />
         </service>
 
+        <!-- App Monitor Foreground Service -->
+        <service
+            android:name=".services.AppMonitorService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

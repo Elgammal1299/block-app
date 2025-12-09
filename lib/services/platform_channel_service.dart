@@ -157,6 +157,17 @@ class PlatformChannelService {
     }
   }
 
+  Future<void> updateBlockedAppsJson(String appsJson) async {
+    try {
+      await _channel.invokeMethod(
+        'updateBlockedAppsJson',
+        {'appsJson': appsJson},
+      );
+    } on PlatformException catch (e) {
+      print('Error updating blocked apps JSON: ${e.message}');
+    }
+  }
+
   Future<void> updateSchedules(List<Schedule> schedules) async {
     try {
       final List<Map<String, dynamic>> scheduleMaps =
