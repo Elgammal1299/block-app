@@ -8,6 +8,7 @@ class AppConstants {
   static const String keyFocusPresets = 'focus_presets';
   static const String keySettingsPin = 'settings_pin';
   static const String keyDarkMode = 'dark_mode';
+  static const String keyLanguageCode = 'language_code';
   static const String keyUnlockChallengeType = 'unlock_challenge_type';
   static const String keyBlockAttempts = 'block_attempts';
   static const String keyFocusStreak = 'focus_streak';

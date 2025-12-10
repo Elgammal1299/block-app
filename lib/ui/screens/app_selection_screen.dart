@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../providers/app_list_provider.dart';
-import '../../providers/blocked_apps_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../presentation/cubit/app_list/app_list_cubit.dart';
+import '../../presentation/cubit/app_list/app_list_state.dart';
+import '../../presentation/cubit/blocked_apps/blocked_apps_cubit.dart';
+import '../../presentation/cubit/blocked_apps/blocked_apps_state.dart';
 import '../../data/models/app_info.dart';
 import '../../data/models/blocked_app.dart';
 
@@ -28,33 +30,42 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
   Future<void> _loadData() async {
     if (!mounted) return;
 
-    final appListProvider = context.read<AppListProvider>();
-    final blockedAppsProvider = context.read<BlockedAppsProvider>();
+    final appListCubit = context.read<AppListCubit>();
+    final blockedAppsCubit = context.read<BlockedAppsCubit>();
 
     setState(() => _isLoading = true);
 
     // Load installed apps
-    await appListProvider.loadInstalledApps();
+    await appListCubit.loadInstalledApps();
 
     // Load currently blocked apps and add to selection
-    await blockedAppsProvider.loadBlockedApps();
+    await blockedAppsCubit.loadBlockedApps();
 
     if (mounted) {
+      final blockedAppsState = blockedAppsCubit.state;
       setState(() {
-        _selectedPackages.addAll(
-          blockedAppsProvider.blockedApps.map((app) => app.packageName),
-        );
+        if (blockedAppsState is BlockedAppsLoaded) {
+          _selectedPackages.addAll(
+            blockedAppsState.blockedApps.map((app) => app.packageName),
+          );
+        }
         _isLoading = false;
       });
     }
   }
 
   Future<void> _saveSelection() async {
-    final appListProvider = context.read<AppListProvider>();
+    final appListCubit = context.read<AppListCubit>();
+    final appListState = appListCubit.state;
 
     // Create BlockedApp objects for selected packages
     final blockedApps = _selectedPackages.map((packageName) {
-      final appInfo = appListProvider.apps.firstWhere(
+      List<AppInfo> apps = [];
+      if (appListState is AppListLoaded) {
+        apps = appListState.apps;
+      }
+
+      final appInfo = apps.firstWhere(
         (app) => app.packageName == packageName,
         orElse: () => AppInfo(packageName: packageName, appName: packageName),
       );
@@ -78,8 +89,6 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final appListProvider = context.watch<AppListProvider>();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Select Apps to Block'),
@@ -94,81 +103,93 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
             ),
         ],
       ),
-      body: Column(
-        children: [
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search apps...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onChanged: (value) {
-                appListProvider.setSearchQuery(value);
-              },
-            ),
-          ),
-
-          // Show System Apps Toggle
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              children: [
-                const Text('Show system apps'),
-                const Spacer(),
-                Switch(
-                  value: appListProvider.showSystemApps,
+      body: BlocBuilder<AppListCubit, AppListState>(
+        builder: (context, state) {
+          return Column(
+            children: [
+              // Search Bar
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search apps...',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   onChanged: (value) {
-                    appListProvider.toggleShowSystemApps();
+                    context.read<AppListCubit>().setSearchQuery(value);
                   },
                 ),
-              ],
-            ),
-          ),
-
-          // Selected Count
-          if (_selectedPackages.isNotEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                '${_selectedPackages.length} apps selected',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+
+              // Show System Apps Toggle
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  children: [
+                    const Text('Show system apps'),
+                    const Spacer(),
+                    Switch(
+                      value: state is AppListLoaded ? state.showSystemApps : false,
+                      onChanged: (value) {
+                        context.read<AppListCubit>().toggleShowSystemApps();
+                      },
+                    ),
+                  ],
                 ),
               ),
-            ),
 
-          // Apps List
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : appListProvider.apps.isEmpty
-                    ? const Center(
-                        child: Text('No apps found'),
-                      )
-                    : ListView.builder(
-                        itemCount: appListProvider.apps.length,
-                        itemBuilder: (context, index) {
-                          final app = appListProvider.apps[index];
-                          final isSelected =
-                              _selectedPackages.contains(app.packageName);
+              // Selected Count
+              if (_selectedPackages.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${_selectedPackages.length} apps selected',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ),
 
-                          return _buildAppItem(app, isSelected);
-                        },
-                      ),
-          ),
-        ],
+              // Apps List
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : state is AppListLoaded
+                        ? state.apps.isEmpty
+                            ? const Center(
+                                child: Text('No apps found'),
+                              )
+                            : ListView.builder(
+                                itemCount: state.apps.length,
+                                itemBuilder: (context, index) {
+                                  final app = state.apps[index];
+                                  final isSelected =
+                                      _selectedPackages.contains(app.packageName);
+
+                                  return _buildAppItem(app, isSelected);
+                                },
+                              )
+                        : state is AppListError
+                            ? Center(
+                                child: Text('Error: ${state.message}'),
+                              )
+                            : const Center(
+                                child: Text('Loading...'),
+                              ),
+              ),
+            ],
+          );
+        },
       ),
       floatingActionButton: _selectedPackages.isNotEmpty
           ? FloatingActionButton.extended(

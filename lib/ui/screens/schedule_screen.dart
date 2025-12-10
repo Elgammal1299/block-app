@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../providers/schedule_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../presentation/cubit/schedule/schedule_cubit.dart';
+import '../../presentation/cubit/schedule/schedule_state.dart';
 import '../../data/models/schedule.dart';
 import '../widgets/schedule_card.dart';
 
@@ -15,9 +16,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ScheduleProvider>().loadSchedules();
-    });
+    // Cubit automatically loads schedules in its constructor
   }
 
   void _showAddScheduleDialog([Schedule? existingSchedule]) {
@@ -29,25 +28,29 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheduleProvider = context.watch<ScheduleProvider>();
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Block Schedules'),
       ),
-      body: scheduleProvider.schedules.isEmpty
-          ? Center(
+      body: BlocBuilder<ScheduleCubit, ScheduleState>(
+        builder: (context, state) {
+          if (state is ScheduleLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state is ScheduleError) {
+            return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.calendar_today_outlined,
+                    Icons.error_outline,
                     size: 80,
-                    color: Colors.grey[400],
+                    color: Colors.red[400],
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No schedules yet',
+                    'Error loading schedules',
                     style: TextStyle(
                       fontSize: 18,
                       color: Colors.grey[600],
@@ -56,7 +59,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Tap + to create your first blocking schedule',
+                    state.message,
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey[500],
@@ -64,16 +67,51 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   ),
                 ],
               ),
-            )
-          : ListView.builder(
+            );
+          }
+
+          if (state is ScheduleLoaded) {
+            if (state.schedules.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 80,
+                      color: Colors.grey[400],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No schedules yet',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tap + to create your first blocking schedule',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: scheduleProvider.schedules.length,
+              itemCount: state.schedules.length,
               itemBuilder: (context, index) {
-                final schedule = scheduleProvider.schedules[index];
+                final schedule = state.schedules[index];
                 return ScheduleCard(
                   schedule: schedule,
                   onToggle: () {
-                    scheduleProvider.toggleSchedule(schedule.id);
+                    context.read<ScheduleCubit>().toggleSchedule(schedule.id);
                   },
                   onEdit: () {
                     _showAddScheduleDialog(schedule);
@@ -83,7 +121,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   },
                 );
               },
-            ),
+            );
+          }
+
+          return const SizedBox.shrink();
+        },
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddScheduleDialog(),
         icon: const Icon(Icons.add),
@@ -105,7 +148,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
           TextButton(
             onPressed: () {
-              context.read<ScheduleProvider>().removeSchedule(schedule.id);
+              context.read<ScheduleCubit>().removeSchedule(schedule.id);
               Navigator.pop(context);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -195,7 +238,7 @@ class _ScheduleDialogState extends State<_ScheduleDialog> {
       return;
     }
 
-    final scheduleProvider = context.read<ScheduleProvider>();
+    final scheduleCubit = context.read<ScheduleCubit>();
     final schedule = Schedule(
       id: widget.existingSchedule?.id ?? '',
       startTime: _startTime,
@@ -205,9 +248,9 @@ class _ScheduleDialogState extends State<_ScheduleDialog> {
     );
 
     if (widget.existingSchedule != null) {
-      scheduleProvider.updateSchedule(schedule);
+      scheduleCubit.updateSchedule(schedule);
     } else {
-      scheduleProvider.addSchedule(schedule);
+      scheduleCubit.addSchedule(schedule);
     }
 
     Navigator.pop(context);

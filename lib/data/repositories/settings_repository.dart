@@ -63,6 +63,16 @@ class SettingsRepository {
     return await _prefsService.setDarkMode(value);
   }
 
+  // ========== Language ==========
+
+  Future<String?> getLanguageCode() async {
+    return await _prefsService.getLanguageCode();
+  }
+
+  Future<bool> setLanguageCode(String languageCode) async {
+    return await _prefsService.setLanguageCode(languageCode);
+  }
+
   // ========== Unlock Challenge Type ==========
 
   Future<String> getUnlockChallengeType() async {

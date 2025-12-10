@@ -138,6 +138,15 @@ class SharedPrefsService {
         false;
   }
 
+  Future<String?> getLanguageCode() async {
+    return _preferences?.getString(AppConstants.keyLanguageCode);
+  }
+
+  Future<bool> setLanguageCode(String languageCode) async {
+    return await _preferences?.setString(AppConstants.keyLanguageCode, languageCode) ??
+        false;
+  }
+
   Future<String> getUnlockChallengeType() async {
     return _preferences?.getString(AppConstants.keyUnlockChallengeType) ??
         'math';

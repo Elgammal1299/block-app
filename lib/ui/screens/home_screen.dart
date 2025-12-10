@@ -1,9 +1,15 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../providers/blocked_apps_provider.dart';
-import '../../providers/schedule_provider.dart';
-import '../../providers/theme_provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../presentation/cubit/blocked_apps/blocked_apps_cubit.dart';
+import '../../presentation/cubit/blocked_apps/blocked_apps_state.dart';
+import '../../presentation/cubit/schedule/schedule_cubit.dart';
+import '../../presentation/cubit/schedule/schedule_state.dart';
+import '../../presentation/cubit/theme/theme_cubit.dart';
+import '../../presentation/cubit/theme/theme_state.dart';
+import '../../presentation/cubit/locale/locale_cubit.dart';
+import '../../presentation/cubit/locale/locale_state.dart';
+import '../../core/localization/app_localizations.dart';
 import '../../services/platform_channel_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -38,20 +44,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _syncDataToNative() async {
     try {
-      final scheduleProvider = context.read<ScheduleProvider>();
-      final blockedAppsProvider = context.read<BlockedAppsProvider>();
+      final scheduleCubit = context.read<ScheduleCubit>();
+      final blockedAppsCubit = context.read<BlockedAppsCubit>();
+      final platformService = PlatformChannelService();
 
       // Sync schedules
-      final schedules = scheduleProvider.schedules;
-      final platformService = PlatformChannelService();
-      await platformService.updateSchedules(schedules);
-      print('Synced ${schedules.length} schedules to Native');
+      final scheduleState = scheduleCubit.state;
+      if (scheduleState is ScheduleLoaded) {
+        final schedules = scheduleState.schedules;
+        await platformService.updateSchedules(schedules);
+        print('Synced ${schedules.length} schedules to Native');
+      }
 
       // Sync blocked apps
-      final blockedApps = blockedAppsProvider.blockedApps;
-      final appsJson = jsonEncode(blockedApps.map((app) => app.toJson()).toList());
-      await platformService.updateBlockedAppsJson(appsJson);
-      print('Synced ${blockedApps.length} blocked apps to Native');
+      final blockedAppsState = blockedAppsCubit.state;
+      if (blockedAppsState is BlockedAppsLoaded) {
+        final blockedApps = blockedAppsState.blockedApps;
+        final appsJson = jsonEncode(blockedApps.map((app) => app.toJson()).toList());
+        await platformService.updateBlockedAppsJson(appsJson);
+        print('Synced ${blockedApps.length} blocked apps to Native');
+      }
     } catch (e) {
       print('Error syncing data to Native: $e');
     }
@@ -59,28 +71,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final blockedAppsProvider = context.watch<BlockedAppsProvider>();
-    final scheduleProvider = context.watch<ScheduleProvider>();
-    final themeProvider = context.watch<ThemeProvider>();
+    final localizations = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('App Blocker'),
+        title: Text(localizations.appName),
         actions: [
-          IconButton(
-            icon: Icon(
-              themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode,
-            ),
-            onPressed: () {
-              themeProvider.toggleTheme();
+          // Language Toggle Button
+          BlocBuilder<LocaleCubit, LocaleState>(
+            builder: (context, state) {
+              return IconButton(
+                icon: const Icon(Icons.language),
+                tooltip: localizations.changeLanguage,
+                onPressed: () {
+                  context.read<LocaleCubit>().toggleLocale();
+                },
+              );
+            },
+          ),
+          // Theme Toggle Button
+          BlocBuilder<ThemeCubit, ThemeState>(
+            builder: (context, state) {
+              final isDarkMode = state is ThemeLoaded ? state.isDarkMode : false;
+              return IconButton(
+                icon: Icon(
+                  isDarkMode ? Icons.light_mode : Icons.dark_mode,
+                ),
+                tooltip: isDarkMode ? localizations.lightMode : localizations.darkMode,
+                onPressed: () {
+                  context.read<ThemeCubit>().toggleTheme();
+                },
+              );
             },
           ),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          await blockedAppsProvider.loadBlockedApps();
-          await scheduleProvider.loadSchedules();
+          await context.read<BlockedAppsCubit>().loadBlockedApps();
+          await context.read<ScheduleCubit>().loadSchedules();
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -93,7 +122,15 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 16),
 
               // Today's Stats Card
-              _buildTodayStatsCard(blockedAppsProvider, scheduleProvider),
+              BlocBuilder<BlockedAppsCubit, BlockedAppsState>(
+                builder: (context, blockedAppsState) {
+                  return BlocBuilder<ScheduleCubit, ScheduleState>(
+                    builder: (context, scheduleState) {
+                      return _buildTodayStatsCard(blockedAppsState, scheduleState);
+                    },
+                  );
+                },
+              ),
               const SizedBox(height: 24),
 
               // Quick Actions
@@ -161,9 +198,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTodayStatsCard(
-    BlockedAppsProvider blockedAppsProvider,
-    ScheduleProvider scheduleProvider,
+    BlockedAppsState blockedAppsState,
+    ScheduleState scheduleState,
   ) {
+    int totalBlockedApps = 0;
+    int totalBlockAttempts = 0;
+    int enabledSchedulesCount = 0;
+
+    if (blockedAppsState is BlockedAppsLoaded) {
+      totalBlockedApps = blockedAppsState.blockedApps.length;
+      totalBlockAttempts = blockedAppsState.blockedApps
+          .fold(0, (sum, app) => sum + app.blockAttempts);
+    }
+
+    if (scheduleState is ScheduleLoaded) {
+      enabledSchedulesCount = scheduleState.schedules
+          .where((schedule) => schedule.isEnabled)
+          .length;
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -180,7 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: _buildStatItem(
                     'Blocked Apps',
-                    blockedAppsProvider.totalBlockedApps.toString(),
+                    totalBlockedApps.toString(),
                     Icons.block,
                     Colors.red,
                   ),
@@ -188,7 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: _buildStatItem(
                     'Active Schedules',
-                    scheduleProvider.enabledSchedules.length.toString(),
+                    enabledSchedulesCount.toString(),
                     Icons.schedule,
                     Colors.blue,
                   ),
@@ -196,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: _buildStatItem(
                     'Block Attempts',
-                    blockedAppsProvider.totalBlockAttempts.toString(),
+                    totalBlockAttempts.toString(),
                     Icons.warning,
                     Colors.orange,
                   ),
