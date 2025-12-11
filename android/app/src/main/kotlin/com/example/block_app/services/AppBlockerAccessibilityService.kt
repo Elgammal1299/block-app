@@ -19,6 +19,8 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         private const val KEY_BLOCKED_APPS = "blocked_apps"
         private const val KEY_SCHEDULES = "schedules"
         private const val KEY_TEMP_UNLOCK = "temp_unlock_until"
+        private const val KEY_FOCUS_SESSION_PACKAGES = "focus_session_packages"
+        private const val KEY_FOCUS_SESSION_END = "focus_session_end_time"
 
         // Method to set temporary unlock (called from BlockOverlayActivity)
         fun setTemporaryUnlock(context: Context, durationMinutes: Int) {
@@ -52,6 +54,15 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
             // Check if there's a temporary unlock
             if (isTemporarilyUnlocked()) {
+                return
+            }
+
+            // Check if app is in active focus session (priority check)
+            if (isInActiveFocusSession(packageName)) {
+                Log.d(TAG, "Blocking app (Focus Mode): $packageName")
+                incrementBlockAttempts(packageName)
+                launchBlockOverlay(packageName)
+                performGlobalAction(GLOBAL_ACTION_HOME)
                 return
             }
 
@@ -193,6 +204,42 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error checking schedules: ${e.message}")
+        }
+
+        return false
+    }
+
+    private fun isInActiveFocusSession(packageName: String): Boolean {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val sessionEndTime = prefs.getLong(KEY_FOCUS_SESSION_END, 0)
+
+        // Check if session is still active
+        if (System.currentTimeMillis() > sessionEndTime) {
+            // Session expired, clear it
+            if (sessionEndTime > 0) {
+                prefs.edit()
+                    .remove(KEY_FOCUS_SESSION_PACKAGES)
+                    .remove(KEY_FOCUS_SESSION_END)
+                    .apply()
+                Log.d(TAG, "Focus session expired and cleared")
+            }
+            return false
+        }
+
+        // Check if package is in focus session
+        val focusPackagesJson = prefs.getString(KEY_FOCUS_SESSION_PACKAGES, null)
+        if (focusPackagesJson != null) {
+            try {
+                val packagesArray = JSONArray(focusPackagesJson)
+                for (i in 0 until packagesArray.length()) {
+                    if (packagesArray.getString(i) == packageName) {
+                        Log.d(TAG, "Package $packageName is in active focus session")
+                        return true
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing focus session packages: ${e.message}")
+            }
         }
 
         return false

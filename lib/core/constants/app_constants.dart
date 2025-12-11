@@ -13,6 +13,10 @@ class AppConstants {
   static const String keyBlockAttempts = 'block_attempts';
   static const String keyFocusStreak = 'focus_streak';
   static const String keyLastFocusDate = 'last_focus_date';
+  static const String keyFocusLists = 'focus_lists';
+  static const String keyActiveFocusSession = 'active_focus_session';
+  static const String keyFocusSessionHistory = 'focus_session_history';
+  static const String keyPresetsInitialized = 'presets_initialized';
 
   // Platform Channel Methods
   static const String methodGetInstalledApps = 'getInstalledApps';
@@ -32,6 +36,8 @@ class AppConstants {
   static const String methodUpdateBlockedApps = 'updateBlockedApps';
   static const String methodUpdateSchedules = 'updateSchedules';
   static const String methodGetAppUsageStats = 'getAppUsageStats';
+  static const String methodStartFocusSession = 'startFocusSession';
+  static const String methodEndFocusSession = 'endFocusSession';
 
   // Callback Methods (Native -> Flutter)
   static const String callbackOnAppBlocked = 'onAppBlocked';

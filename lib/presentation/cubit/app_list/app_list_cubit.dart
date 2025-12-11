@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/foundation.dart';
 import '../../../data/models/app_info.dart';
 import '../../../data/repositories/app_repository.dart';
+import '../../../core/utils/isolate_helper.dart';
 import 'app_list_state.dart';
 
 class AppListCubit extends Cubit<AppListState> {
@@ -13,21 +15,27 @@ class AppListCubit extends Cubit<AppListState> {
     emit(AppListLoading());
     try {
       _allApps = await _appRepository.getInstalledApps();
-      final filteredApps = _filterApps(_allApps, '', false);
+
+      // Use isolate for filtering to avoid blocking UI
+      final filteredApps = await _filterAppsInIsolate(_allApps, '', false);
+
       emit(AppListLoaded(apps: filteredApps));
     } catch (e) {
       emit(AppListError(e.toString()));
     }
   }
 
-  void setSearchQuery(String query) {
+  Future<void> setSearchQuery(String query) async {
     if (state is AppListLoaded) {
       final currentState = state as AppListLoaded;
-      final filteredApps = _filterApps(
+
+      // Use isolate for filtering
+      final filteredApps = await _filterAppsInIsolate(
         _allApps,
         query,
         currentState.showSystemApps,
       );
+
       emit(AppListLoaded(
         apps: filteredApps,
         searchQuery: query,
@@ -36,15 +44,18 @@ class AppListCubit extends Cubit<AppListState> {
     }
   }
 
-  void toggleShowSystemApps() {
+  Future<void> toggleShowSystemApps() async {
     if (state is AppListLoaded) {
       final currentState = state as AppListLoaded;
       final newValue = !currentState.showSystemApps;
-      final filteredApps = _filterApps(
+
+      // Use isolate for filtering
+      final filteredApps = await _filterAppsInIsolate(
         _allApps,
         currentState.searchQuery,
         newValue,
       );
+
       emit(AppListLoaded(
         apps: filteredApps,
         searchQuery: currentState.searchQuery,
@@ -53,26 +64,33 @@ class AppListCubit extends Cubit<AppListState> {
     }
   }
 
-  List<AppInfo> _filterApps(
+  /// Filter apps using isolate for better performance
+  Future<List<AppInfo>> _filterAppsInIsolate(
     List<AppInfo> apps,
     String searchQuery,
     bool showSystemApps,
-  ) {
-    return apps.where((app) {
-      // Filter by system apps
-      if (!showSystemApps && app.isSystemApp) {
-        return false;
-      }
-
-      // Filter by search query
-      if (searchQuery.isNotEmpty) {
-        final query = searchQuery.toLowerCase();
-        return app.appName.toLowerCase().contains(query) ||
-            app.packageName.toLowerCase().contains(query);
-      }
-
-      return true;
+  ) async {
+    // Convert to Map for isolate
+    final appsMap = apps.map((app) => {
+      'packageName': app.packageName,
+      'appName': app.appName,
+      'isSystemApp': app.isSystemApp,
     }).toList();
+
+    final params = {
+      'apps': appsMap,
+      'searchQuery': searchQuery,
+      'showSystemApps': showSystemApps,
+    };
+
+    // Run filtering in isolate
+    final filteredMaps = await compute(IsolateHelper.filterAppsInIsolate, params);
+
+    // Convert back to AppInfo, keeping original icons
+    final packageToApp = {for (var app in apps) app.packageName: app};
+    return filteredMaps
+        .map((map) => packageToApp[map['packageName']] as AppInfo)
+        .toList();
   }
 
   void refresh() {

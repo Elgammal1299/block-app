@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../DI/setup_get_it.dart';
 import '../../presentation/cubit/blocked_apps/blocked_apps_cubit.dart';
 import '../../presentation/cubit/blocked_apps/blocked_apps_state.dart';
 import '../../presentation/cubit/schedule/schedule_cubit.dart';
@@ -11,6 +12,7 @@ import '../../presentation/cubit/locale/locale_cubit.dart';
 import '../../presentation/cubit/locale/locale_state.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../services/platform_channel_service.dart';
+import '../../router/app_routes.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -44,9 +46,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _syncDataToNative() async {
     try {
-      final scheduleCubit = context.read<ScheduleCubit>();
-      final blockedAppsCubit = context.read<BlockedAppsCubit>();
-      final platformService = PlatformChannelService();
+      final scheduleCubit = getIt<ScheduleCubit>();
+      final blockedAppsCubit = getIt<BlockedAppsCubit>();
+      final platformService = getIt<PlatformChannelService>();
 
       // Sync schedules
       final scheduleState = scheduleCubit.state;
@@ -79,18 +81,20 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           // Language Toggle Button
           BlocBuilder<LocaleCubit, LocaleState>(
+            bloc: getIt<LocaleCubit>(),
             builder: (context, state) {
               return IconButton(
                 icon: const Icon(Icons.language),
                 tooltip: localizations.changeLanguage,
                 onPressed: () {
-                  context.read<LocaleCubit>().toggleLocale();
+                  getIt<LocaleCubit>().toggleLocale();
                 },
               );
             },
           ),
           // Theme Toggle Button
           BlocBuilder<ThemeCubit, ThemeState>(
+            bloc: getIt<ThemeCubit>(),
             builder: (context, state) {
               final isDarkMode = state is ThemeLoaded ? state.isDarkMode : false;
               return IconButton(
@@ -99,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 tooltip: isDarkMode ? localizations.lightMode : localizations.darkMode,
                 onPressed: () {
-                  context.read<ThemeCubit>().toggleTheme();
+                  getIt<ThemeCubit>().toggleTheme();
                 },
               );
             },
@@ -108,8 +112,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          await context.read<BlockedAppsCubit>().loadBlockedApps();
-          await context.read<ScheduleCubit>().loadSchedules();
+          await getIt<BlockedAppsCubit>().loadBlockedApps();
+          await getIt<ScheduleCubit>().loadSchedules();
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -123,8 +127,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
               // Today's Stats Card
               BlocBuilder<BlockedAppsCubit, BlockedAppsState>(
+                bloc: getIt<BlockedAppsCubit>(),
                 builder: (context, blockedAppsState) {
                   return BlocBuilder<ScheduleCubit, ScheduleState>(
+                    bloc: getIt<ScheduleCubit>(),
                     builder: (context, scheduleState) {
                       return _buildTodayStatsCard(blockedAppsState, scheduleState);
                     },
@@ -323,10 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Icons.self_improvement,
           Colors.blue,
           () {
-            // TODO: Navigate to Focus Mode
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Focus Mode coming soon!')),
-            );
+            Navigator.pushNamed(context, AppRoutes.focusLists);
           },
         ),
       ],

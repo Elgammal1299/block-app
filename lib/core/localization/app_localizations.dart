@@ -154,6 +154,69 @@ class AppLocalizations {
   // Messages
   String appsConfigured(int count) => translate('apps_configured').replaceAll('{count}', count.toString());
   String schedulesSelected(int count) => translate('schedules_selected').replaceAll('{count}', count.toString());
+
+  // Focus Mode
+  String get focusLists => translate('focus_lists');
+  String get createFocusList => translate('create_focus_list');
+  String get noFocusLists => translate('no_focus_lists');
+  String get createFirstList => translate('create_first_list');
+  String get focusListDetail => translate('focus_list_detail');
+  String get editList => translate('edit_list');
+  String get deleteList => translate('delete_list');
+  String appsCount(int count) => translate('apps_count').replaceAll('{count}', count.toString());
+  String get selectDuration => translate('select_duration');
+  String get minutesShort => translate('minutes_short');
+  String get customDuration => translate('custom_duration');
+  String get startFocusSession => translate('start_focus_session');
+  String get activeSession => translate('active_session');
+  String get timeRemaining => translate('time_remaining');
+  String get cancelSession => translate('cancel_session');
+  String get cancelSessionConfirm => translate('cancel_session_confirm');
+  String get keepGoing => translate('keep_going');
+  String get sessionCancelled => translate('session_cancelled');
+  String get stayFocused => translate('stay_focused');
+  String get blockedAppsLabel => translate('blocked_apps_label');
+  String get sessionCompleted => translate('session_completed');
+  String get greatJob => translate('great_job');
+  String sessionSuccessMessage(int duration) => translate('session_success_message').replaceAll('{duration}', duration.toString());
+  String get backToLists => translate('back_to_lists');
+  String get focusHistory => translate('focus_history');
+  String get totalSessions => translate('total_sessions');
+  String get completedSessions => translate('completed_sessions');
+  String get cancelledSessions => translate('cancelled_sessions');
+  String get clearHistory => translate('clear_history');
+  String get clearHistoryConfirm => translate('clear_history_confirm');
+  String get noHistory => translate('no_history');
+  String get today => translate('today');
+  String get yesterday => translate('yesterday');
+  String get thisWeek => translate('this_week');
+  String get focusStreak => translate('focus_streak');
+  String daysStreak(int days) => translate('days_streak').replaceAll('{days}', days.toString());
+  String get currentStreak => translate('current_streak');
+  String get longestStreak => translate('longest_streak');
+  String get keepStreak => translate('keep_streak');
+  String get presetSocialMedia => translate('preset_social_media');
+  String get presetGames => translate('preset_games');
+  String get presetCustom => translate('preset_custom');
+  String get notificationSessionStarted => translate('notification_session_started');
+  String notificationTimeRemaining(int minutes) => translate('notification_time_remaining').replaceAll('{minutes}', minutes.toString());
+  String get notificationSessionCompleted => translate('notification_session_completed');
+  String get notificationActionCancel => translate('notification_action_cancel');
+  String get errorSessionActive => translate('error_session_active');
+  String get errorInvalidDuration => translate('error_invalid_duration');
+  String get errorNoAppsSelected => translate('error_no_apps_selected');
+  String get errorListNameRequired => translate('error_list_name_required');
+  String get listName => translate('list_name');
+  String get listNameHint => translate('list_name_hint');
+  String get addApps => translate('add_apps');
+  String get noAppsSelected => translate('no_apps_selected');
+  String get selectApps => translate('select_apps');
+  String get done => translate('done');
+  String get saveList => translate('save_list');
+  String get focusListCreated => translate('focus_list_created');
+  String get failedToCreateList => translate('failed_to_create_list');
+  String get deleteListConfirm => translate('delete_list_confirm');
+  String get focusMode => translate('focus_mode');
 }
 
 // English translations
@@ -282,6 +345,69 @@ const Map<String, String> _enStrings = {
 
   // Messages
   'apps_configured': '{count} apps configured',
+
+  // Focus Mode
+  'focus_lists': 'Focus Lists',
+  'create_focus_list': 'Create List',
+  'no_focus_lists': 'No lists yet',
+  'create_first_list': 'Create your first focus list',
+  'focus_list_detail': 'List Details',
+  'edit_list': 'Edit List',
+  'delete_list': 'Delete List',
+  'apps_count': '{count} apps',
+  'select_duration': 'Select Duration',
+  'minutes_short': 'min',
+  'custom_duration': 'Custom Duration',
+  'start_focus_session': 'Start Focus Session',
+  'active_session': 'Focus Session',
+  'time_remaining': 'Time Remaining',
+  'cancel_session': 'Cancel Session',
+  'cancel_session_confirm': 'Are you sure you want to cancel?',
+  'keep_going': 'Keep Going',
+  'session_cancelled': 'Session Cancelled',
+  'stay_focused': 'Stay Focused!',
+  'blocked_apps_label': 'Blocked Apps',
+  'session_completed': 'Session Completed!',
+  'great_job': 'Great job!',
+  'session_success_message': 'You stayed focused for {duration} minutes',
+  'back_to_lists': 'Back to Lists',
+  'focus_history': 'Focus History',
+  'total_sessions': 'Total Sessions',
+  'completed_sessions': 'Completed',
+  'cancelled_sessions': 'Cancelled',
+  'clear_history': 'Clear History',
+  'clear_history_confirm': 'Delete all history?',
+  'no_history': 'No sessions yet',
+  'today': 'Today',
+  'yesterday': 'Yesterday',
+  'this_week': 'This Week',
+  'focus_streak': 'Focus Streak',
+  'days_streak': '{days} days',
+  'current_streak': 'Current Streak',
+  'longest_streak': 'Longest Streak',
+  'keep_streak': 'Keep your streak going!',
+  'preset_social_media': 'Social Media',
+  'preset_games': 'Games',
+  'preset_custom': 'Custom',
+  'notification_session_started': 'Focus session started',
+  'notification_time_remaining': '{minutes} minutes remaining',
+  'notification_session_completed': 'Focus session completed!',
+  'notification_action_cancel': 'Cancel',
+  'error_session_active': 'A session is already active',
+  'error_invalid_duration': 'Invalid duration',
+  'error_no_apps_selected': 'No apps selected',
+  'error_list_name_required': 'List name is required',
+  'list_name': 'List Name',
+  'list_name_hint': 'e.g., Work Focus, Study Time',
+  'add_apps': 'Add Apps',
+  'no_apps_selected': 'No apps selected',
+  'select_apps': 'Select Apps',
+  'done': 'Done',
+  'save_list': 'Save List',
+  'focus_list_created': 'Focus list created',
+  'failed_to_create_list': 'Failed to create list',
+  'delete_list_confirm': 'Are you sure you want to delete this list?',
+  'focus_mode': 'Focus Mode',
 };
 
 // Arabic translations
@@ -410,6 +536,69 @@ const Map<String, String> _arStrings = {
 
   // Messages
   'apps_configured': 'تم تكوين {count} تطبيق',
+
+  // Focus Mode
+  'focus_lists': 'قوائم التركيز',
+  'create_focus_list': 'إنشاء قائمة',
+  'no_focus_lists': 'لا توجد قوائم بعد',
+  'create_first_list': 'أنشئ قائمة التركيز الأولى',
+  'focus_list_detail': 'تفاصيل القائمة',
+  'edit_list': 'تعديل القائمة',
+  'delete_list': 'حذف القائمة',
+  'apps_count': '{count} تطبيقات',
+  'select_duration': 'اختر المدة',
+  'minutes_short': 'دقيقة',
+  'custom_duration': 'مدة مخصصة',
+  'start_focus_session': 'بدء جلسة التركيز',
+  'active_session': 'جلسة التركيز',
+  'time_remaining': 'الوقت المتبقي',
+  'cancel_session': 'إلغاء الجلسة',
+  'cancel_session_confirm': 'هل أنت متأكد من الإلغاء؟',
+  'keep_going': 'المتابعة',
+  'session_cancelled': 'تم إلغاء الجلسة',
+  'stay_focused': 'ابقَ مركزاً!',
+  'blocked_apps_label': 'التطبيقات المحظورة',
+  'session_completed': 'اكتملت الجلسة!',
+  'great_job': 'أحسنت!',
+  'session_success_message': 'حافظت على تركيزك لمدة {duration} دقيقة',
+  'back_to_lists': 'العودة للقوائم',
+  'focus_history': 'سجل التركيز',
+  'total_sessions': 'مجموع الجلسات',
+  'completed_sessions': 'المكتملة',
+  'cancelled_sessions': 'الملغاة',
+  'clear_history': 'مسح السجل',
+  'clear_history_confirm': 'حذف جميع السجلات؟',
+  'no_history': 'لا توجد جلسات بعد',
+  'today': 'اليوم',
+  'yesterday': 'أمس',
+  'this_week': 'هذا الأسبوع',
+  'focus_streak': 'سلسلة التركيز',
+  'days_streak': '{days} يوم',
+  'current_streak': 'السلسلة الحالية',
+  'longest_streak': 'أطول سلسلة',
+  'keep_streak': 'حافظ على سلسلتك!',
+  'preset_social_media': 'وسائل التواصل',
+  'preset_games': 'الألعاب',
+  'preset_custom': 'مخصص',
+  'notification_session_started': 'بدأت جلسة التركيز',
+  'notification_time_remaining': 'متبقي {minutes} دقيقة',
+  'notification_session_completed': 'اكتملت جلسة التركيز!',
+  'notification_action_cancel': 'إلغاء',
+  'error_session_active': 'جلسة قيد التنفيذ بالفعل',
+  'error_invalid_duration': 'مدة غير صالحة',
+  'error_no_apps_selected': 'لم يتم اختيار تطبيقات',
+  'error_list_name_required': 'اسم القائمة مطلوب',
+  'list_name': 'اسم القائمة',
+  'list_name_hint': 'مثلاً: تركيز العمل، وقت الدراسة',
+  'add_apps': 'إضافة تطبيقات',
+  'no_apps_selected': 'لم يتم اختيار تطبيقات',
+  'select_apps': 'اختيار التطبيقات',
+  'done': 'تم',
+  'save_list': 'حفظ القائمة',
+  'focus_list_created': 'تم إنشاء القائمة',
+  'failed_to_create_list': 'فشل إنشاء القائمة',
+  'delete_list_confirm': 'هل أنت متأكد من حذف هذه القائمة؟',
+  'focus_mode': 'وضع التركيز',
 };
 
 class _AppLocalizationsDelegate

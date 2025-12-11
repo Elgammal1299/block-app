@@ -55,6 +55,7 @@ dependencies:
 
   # Crypto for PIN hashing
   crypto: ^3.0.3
+  get_it: ^9.2.0
 
 dev_dependencies:
   flutter_test:

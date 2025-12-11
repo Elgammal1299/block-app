@@ -202,4 +202,33 @@ class PlatformChannelService {
       return {};
     }
   }
+
+  // ========== Focus Mode Methods ==========
+
+  Future<void> startFocusSession({
+    required List<String> packageNames,
+    required int durationMinutes,
+  }) async {
+    try {
+      await _channel.invokeMethod(
+        AppConstants.methodStartFocusSession,
+        {
+          'packageNames': packageNames,
+          'durationMinutes': durationMinutes,
+        },
+      );
+    } on PlatformException catch (e) {
+      print('Error starting focus session: ${e.message}');
+    }
+  }
+
+  Future<void> endFocusSession() async {
+    try {
+      await _channel.invokeMethod(
+        AppConstants.methodEndFocusSession,
+      );
+    } on PlatformException catch (e) {
+      print('Error ending focus session: ${e.message}');
+    }
+  }
 }

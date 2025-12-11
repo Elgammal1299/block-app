@@ -167,6 +167,51 @@ class AppBlockerChannel(
                 }
             }
 
+            // Focus Mode Methods
+            "startFocusSession" -> {
+                try {
+                    val packageNames = call.argument<List<String>>("packageNames")
+                    val durationMinutes = call.argument<Int>("durationMinutes")
+
+                    if (packageNames != null && durationMinutes != null) {
+                        val prefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
+                        val editor = prefs.edit()
+
+                        // Save focus session packages as JSON array
+                        val packagesJson = org.json.JSONArray(packageNames).toString()
+                        editor.putString("focus_session_packages", packagesJson)
+
+                        // Calculate and save end time
+                        val endTime = System.currentTimeMillis() + (durationMinutes * 60 * 1000)
+                        editor.putLong("focus_session_end_time", endTime)
+
+                        editor.apply()
+
+                        Log.d("AppBlockerChannel", "Focus session started: $durationMinutes min, ${packageNames.size} apps")
+                        result.success(null)
+                    } else {
+                        result.error("ERROR", "Package names or duration is null", null)
+                    }
+                } catch (e: Exception) {
+                    result.error("ERROR", "Failed to start focus session: ${e.message}", null)
+                }
+            }
+
+            "endFocusSession" -> {
+                try {
+                    val prefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
+                    val editor = prefs.edit()
+                    editor.remove("focus_session_packages")
+                    editor.remove("focus_session_end_time")
+                    editor.apply()
+
+                    Log.d("AppBlockerChannel", "Focus session ended")
+                    result.success(null)
+                } catch (e: Exception) {
+                    result.error("ERROR", "Failed to end focus session: ${e.message}", null)
+                }
+            }
+
             else -> {
                 result.notImplemented()
             }
