@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../DI/setup_get_it.dart';
 import '../../presentation/cubit/focus_list/focus_list_cubit.dart';
 import '../../presentation/cubit/app_list/app_list_cubit.dart';
 import '../../presentation/cubit/app_list/app_list_state.dart';
-import '../../data/models/app_info.dart';
+import '../../core/localization/app_localizations.dart';
 
 class CreateFocusListScreen extends StatefulWidget {
   const CreateFocusListScreen({super.key});
@@ -25,9 +26,11 @@ class _CreateFocusListScreenState extends State<CreateFocusListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Focus List'),
+        title: Text(localizations.createFocusList),
       ),
       body: Form(
         key: _formKey,
@@ -38,15 +41,15 @@ class _CreateFocusListScreenState extends State<CreateFocusListScreen> {
               padding: const EdgeInsets.all(16),
               child: TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'List Name',
-                  hintText: 'e.g., Work Focus, Study Time',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.label),
+                decoration: InputDecoration(
+                  labelText: localizations.listName,
+                  hintText: localizations.listNameHint,
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.label),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a name';
+                    return localizations.errorListNameRequired;
                   }
                   return null;
                 },
@@ -61,7 +64,7 @@ class _CreateFocusListScreenState extends State<CreateFocusListScreen> {
                   const Icon(Icons.apps, size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    '${_selectedPackages.length} apps selected',
+                    localizations.appsCount(_selectedPackages.length),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -71,7 +74,7 @@ class _CreateFocusListScreenState extends State<CreateFocusListScreen> {
                   TextButton.icon(
                     onPressed: _showAppSelectionDialog,
                     icon: const Icon(Icons.add),
-                    label: const Text('Add Apps'),
+                    label: Text(localizations.addApps),
                   ),
                 ],
               ),
@@ -90,7 +93,7 @@ class _CreateFocusListScreenState extends State<CreateFocusListScreen> {
                               size: 64, color: Colors.grey[400]),
                           const SizedBox(height: 16),
                           Text(
-                            'No apps selected',
+                            localizations.noAppsSelected,
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey[600],
@@ -100,7 +103,7 @@ class _CreateFocusListScreenState extends State<CreateFocusListScreen> {
                           ElevatedButton.icon(
                             onPressed: _showAppSelectionDialog,
                             icon: const Icon(Icons.add),
-                            label: const Text('Add Apps'),
+                            label: Text(localizations.addApps),
                           ),
                         ],
                       ),
@@ -143,9 +146,9 @@ class _CreateFocusListScreenState extends State<CreateFocusListScreen> {
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
-                  child: const Text(
-                    'Save List',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  child: Text(
+                    localizations.saveList,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -177,19 +180,21 @@ class _CreateFocusListScreenState extends State<CreateFocusListScreen> {
   }
 
   Future<void> _saveList() async {
+    final localizations = AppLocalizations.of(context);
+
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
     if (_selectedPackages.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one app')),
+        SnackBar(content: Text(localizations.errorNoAppsSelected)),
       );
       return;
     }
 
     final name = _nameController.text.trim();
-    final success = await context.read<FocusListCubit>().createFocusList(
+    final success = await getIt<FocusListCubit>().createFocusList(
           name,
           _selectedPackages.toList(),
         );
@@ -197,13 +202,13 @@ class _CreateFocusListScreenState extends State<CreateFocusListScreen> {
     if (mounted) {
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Focus list created')),
+          SnackBar(content: Text(localizations.focusListCreated)),
         );
         Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to create list'),
+          SnackBar(
+            content: Text(localizations.failedToCreateList),
             backgroundColor: Colors.red,
           ),
         );
@@ -233,11 +238,13 @@ class _AppSelectionDialogState extends State<_AppSelectionDialog> {
   void initState() {
     super.initState();
     _tempSelection = Set.from(widget.selectedPackages);
-    context.read<AppListCubit>().loadInstalledApps();
+    getIt<AppListCubit>().loadInstalledApps();
   }
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Dialog(
       child: SizedBox(
         width: MediaQuery.of(context).size.width * 0.9,
@@ -245,7 +252,7 @@ class _AppSelectionDialogState extends State<_AppSelectionDialog> {
         child: Column(
           children: [
             AppBar(
-              title: const Text('Select Apps'),
+              title: Text(localizations.selectApps),
               automaticallyImplyLeading: false,
               actions: [
                 TextButton(
@@ -253,18 +260,18 @@ class _AppSelectionDialogState extends State<_AppSelectionDialog> {
                     widget.onSelectionChanged(_tempSelection);
                     Navigator.pop(context);
                   },
-                  child: const Text('Done',
-                      style: TextStyle(color: Colors.white)),
+                  child: Text(localizations.done,
+                      style: const TextStyle(color: Colors.white)),
                 ),
               ],
             ),
             Padding(
               padding: const EdgeInsets.all(16),
               child: TextField(
-                decoration: const InputDecoration(
-                  hintText: 'Search apps...',
-                  prefixIcon: Icon(Icons.search),
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  hintText: localizations.searchApps,
+                  prefixIcon: const Icon(Icons.search),
+                  border: const OutlineInputBorder(),
                 ),
                 onChanged: (value) {
                   setState(() {
@@ -275,13 +282,14 @@ class _AppSelectionDialogState extends State<_AppSelectionDialog> {
             ),
             Expanded(
               child: BlocBuilder<AppListCubit, AppListState>(
+                bloc: getIt<AppListCubit>(),
                 builder: (context, state) {
                   if (state is AppListLoading) {
                     return const Center(child: CircularProgressIndicator());
                   }
 
                   if (state is AppListError) {
-                    return Center(child: Text('Error: ${state.message}'));
+                    return Center(child: Text('${localizations.error}: ${state.message}'));
                   }
 
                   if (state is AppListLoaded) {
@@ -292,7 +300,7 @@ class _AppSelectionDialogState extends State<_AppSelectionDialog> {
                     }).toList();
 
                     if (apps.isEmpty) {
-                      return const Center(child: Text('No apps found'));
+                      return Center(child: Text(localizations.noAppsFound));
                     }
 
                     return ListView.builder(

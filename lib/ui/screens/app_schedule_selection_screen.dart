@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../DI/setup_get_it.dart';
 import '../../presentation/cubit/schedule/schedule_cubit.dart';
 import '../../presentation/cubit/schedule/schedule_state.dart';
 import '../../presentation/cubit/blocked_apps/blocked_apps_cubit.dart';
@@ -60,8 +61,8 @@ class _AppScheduleSelectionScreenState
   }
 
   Future<void> _saveSelections() async {
-    final blockedAppsCubit = context.read<BlockedAppsCubit>();
-    final scheduleCubit = context.read<ScheduleCubit>();
+    final blockedAppsCubit = getIt<BlockedAppsCubit>();
+    final scheduleCubit = getIt<ScheduleCubit>();
 
     // Update each app with its selected schedules
     final updatedApps = <BlockedApp>[];
@@ -109,6 +110,7 @@ class _AppScheduleSelectionScreenState
         title: const Text('Set Blocking Schedules'),
       ),
       body: BlocBuilder<ScheduleCubit, ScheduleState>(
+        bloc: getIt<ScheduleCubit>(),
         builder: (context, state) {
           return ListView.builder(
             padding: const EdgeInsets.all(16),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../DI/setup_get_it.dart';
 import '../../data/models/focus_list.dart';
 import '../../data/models/app_info.dart';
 import '../../presentation/cubit/focus_session/focus_session_cubit.dart';
@@ -7,6 +8,7 @@ import '../../presentation/cubit/focus_session/focus_session_state.dart';
 import '../../presentation/cubit/app_list/app_list_cubit.dart';
 import '../../presentation/cubit/app_list/app_list_state.dart';
 import '../../router/app_routes.dart';
+import '../../core/localization/app_localizations.dart';
 
 class FocusListDetailScreen extends StatefulWidget {
   final FocusList focusList;
@@ -28,12 +30,13 @@ class _FocusListDetailScreenState extends State<FocusListDetailScreen> {
   void initState() {
     super.initState();
     // Load apps to get icons
-    context.read<AppListCubit>().loadInstalledApps();
+    getIt<AppListCubit>().loadInstalledApps();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final localizations = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -45,7 +48,7 @@ class _FocusListDetailScreenState extends State<FocusListDetailScreen> {
               onPressed: () {
                 // TODO: Navigate to edit screen
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Edit functionality coming soon')),
+                  SnackBar(content: Text('${localizations.edit} functionality coming soon')),
                 );
               },
             ),
@@ -72,7 +75,7 @@ class _FocusListDetailScreenState extends State<FocusListDetailScreen> {
             children: [
               // Blocked Apps Section
               _buildSection(
-                title: 'Blocked Apps',
+                title: localizations.blockedApps,
                 icon: Icons.block,
                 child: _buildAppsList(),
               ),
@@ -81,7 +84,7 @@ class _FocusListDetailScreenState extends State<FocusListDetailScreen> {
 
               // Duration Selection
               _buildSection(
-                title: 'Select Duration',
+                title: localizations.selectDuration,
                 icon: Icons.timer,
                 child: Column(
                   children: [
@@ -121,12 +124,12 @@ class _FocusListDetailScreenState extends State<FocusListDetailScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
-                                'Custom Duration',
-                                style: TextStyle(fontWeight: FontWeight.w500),
+                              Text(
+                                localizations.customDuration,
+                                style: const TextStyle(fontWeight: FontWeight.w500),
                               ),
                               Text(
-                                '$_selectedDuration min',
+                                '$_selectedDuration ${localizations.minutesShort}',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -140,7 +143,7 @@ class _FocusListDetailScreenState extends State<FocusListDetailScreen> {
                             min: 5,
                             max: 120,
                             divisions: 23,
-                            label: '$_selectedDuration min',
+                            label: '$_selectedDuration ${localizations.minutesShort}',
                             onChanged: (value) {
                               setState(() {
                                 _selectedDuration = value.toInt();
@@ -151,14 +154,14 @@ class _FocusListDetailScreenState extends State<FocusListDetailScreen> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                '5 min',
+                                '5 ${localizations.minutesShort}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey[600],
                                 ),
                               ),
                               Text(
-                                '120 min',
+                                '120 ${localizations.minutesShort}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey[600],
@@ -179,6 +182,7 @@ class _FocusListDetailScreenState extends State<FocusListDetailScreen> {
               SizedBox(
                 width: double.infinity,
                 child: BlocBuilder<FocusSessionCubit, FocusSessionState>(
+                  bloc: getIt<FocusSessionCubit>(),
                   builder: (context, state) {
                     final isLoading = state is FocusSessionLoading;
                     final isActive = state is FocusSessionActive;
@@ -203,14 +207,14 @@ class _FocusListDetailScreenState extends State<FocusListDetailScreen> {
                                     AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             )
-                          : const Row(
+                          : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.play_arrow),
-                                SizedBox(width: 8),
+                                const Icon(Icons.play_arrow),
+                                const SizedBox(width: 8),
                                 Text(
-                                  'Start Focus Session',
-                                  style: TextStyle(
+                                  localizations.startFocusSession,
+                                  style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -256,6 +260,8 @@ class _FocusListDetailScreenState extends State<FocusListDetailScreen> {
   }
 
   Widget _buildAppsList() {
+    final localizations = AppLocalizations.of(context);
+
     if (widget.focusList.packageNames.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -263,13 +269,14 @@ class _FocusListDetailScreenState extends State<FocusListDetailScreen> {
           border: Border.all(color: Colors.grey[300]!),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: const Center(
-          child: Text('No apps in this list'),
+        child: Center(
+          child: Text(localizations.noAppsSelected),
         ),
       );
     }
 
     return BlocBuilder<AppListCubit, AppListState>(
+      bloc: getIt<AppListCubit>(),
       builder: (context, state) {
         Map<String, AppInfo> appsMap = {};
 
@@ -327,15 +334,16 @@ class _FocusListDetailScreenState extends State<FocusListDetailScreen> {
   }
 
   Future<void> _startSession(BuildContext context) async {
-    final success = await context.read<FocusSessionCubit>().startSession(
+    final localizations = AppLocalizations.of(context);
+    final success = await getIt<FocusSessionCubit>().startSession(
           widget.focusList.id,
           _selectedDuration,
         );
 
     if (!success && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to start session'),
+        SnackBar(
+          content: Text(localizations.error),
           backgroundColor: Colors.red,
         ),
       );
@@ -384,7 +392,7 @@ class _DurationButton extends StatelessWidget {
               ),
             ),
             Text(
-              'min',
+              AppLocalizations.of(context).minutesShort,
               style: TextStyle(
                 fontSize: 12,
                 color: isSelected

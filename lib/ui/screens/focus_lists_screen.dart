@@ -1,29 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../DI/setup_get_it.dart';
 import '../../presentation/cubit/focus_list/focus_list_cubit.dart';
 import '../../presentation/cubit/focus_list/focus_list_state.dart';
 import '../../data/models/focus_list.dart';
 import '../../router/app_routes.dart';
+import '../../core/localization/app_localizations.dart';
 
 class FocusListsScreen extends StatelessWidget {
   const FocusListsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Focus Lists'),
+        title: Text(localizations.focusLists),
         actions: [
           IconButton(
             icon: const Icon(Icons.history),
             onPressed: () {
               Navigator.pushNamed(context, AppRoutes.focusHistory);
             },
-            tooltip: 'Focus History',
+            tooltip: localizations.focusHistory,
           ),
         ],
       ),
       body: BlocBuilder<FocusListCubit, FocusListState>(
+        bloc: getIt<FocusListCubit>(),
         builder: (context, state) {
           if (state is FocusListLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -37,16 +42,16 @@ class FocusListsScreen extends StatelessWidget {
                   const Icon(Icons.error_outline, size: 64, color: Colors.red),
                   const SizedBox(height: 16),
                   Text(
-                    'Error: ${state.message}',
+                    '${localizations.error}: ${state.message}',
                     style: const TextStyle(color: Colors.red),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
-                      context.read<FocusListCubit>().loadFocusLists();
+                      getIt<FocusListCubit>().loadFocusLists();
                     },
-                    child: const Text('Retry'),
+                    child: Text(localizations.cancel),
                   ),
                 ],
               ),
@@ -68,7 +73,7 @@ class FocusListsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'No focus lists yet',
+                      localizations.noFocusLists,
                       style: TextStyle(
                         fontSize: 18,
                         color: Colors.grey[600],
@@ -76,7 +81,7 @@ class FocusListsScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Create your first focus list',
+                      localizations.createFirstList,
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[500],
@@ -115,42 +120,42 @@ class FocusListsScreen extends StatelessWidget {
           Navigator.pushNamed(context, AppRoutes.createFocusList);
         },
         icon: const Icon(Icons.add),
-        label: const Text('Create List'),
+        label: Text(localizations.createFocusList),
       ),
     );
   }
 
   void _showDeleteDialog(BuildContext context, FocusList focusList) {
+    final localizations = AppLocalizations.of(context);
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete List'),
-        content: Text('Delete "${focusList.name}"?'),
+        title: Text(localizations.deleteList),
+        content: Text(localizations.deleteListConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text(localizations.cancel),
           ),
           TextButton(
             onPressed: () async {
               Navigator.pop(dialogContext);
-              final success = await context
-                  .read<FocusListCubit>()
-                  .deleteFocusList(focusList.id);
+              final success = await getIt<FocusListCubit>().deleteFocusList(focusList.id);
 
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
                       success
-                          ? 'List deleted'
-                          : 'Failed to delete list',
+                          ? localizations.success
+                          : localizations.failedToCreateList,
                     ),
                   ),
                 );
               }
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: Text(localizations.delete, style: const TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -172,6 +177,7 @@ class _FocusListCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final localizations = AppLocalizations.of(context);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -212,7 +218,7 @@ class _FocusListCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${focusList.packageNames.length} apps',
+                      localizations.appsCount(focusList.packageNames.length),
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey[600],
@@ -221,7 +227,7 @@ class _FocusListCard extends StatelessWidget {
                     if (focusList.lastUsedAt != null) ...[
                       const SizedBox(height: 4),
                       Text(
-                        'Last used: ${_formatDate(focusList.lastUsedAt!)}',
+                        _formatDate(context, focusList.lastUsedAt!),
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey[500],
@@ -246,18 +252,20 @@ class _FocusListCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(BuildContext context, DateTime date) {
+    final localizations = AppLocalizations.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final itemDate = DateTime(date.year, date.month, date.day);
 
     if (itemDate == today) {
-      return 'Today';
+      return localizations.today;
     } else if (itemDate == yesterday) {
-      return 'Yesterday';
+      return localizations.yesterday;
     } else if (now.difference(date).inDays < 7) {
-      const days = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      final days = ['', localizations.mon, localizations.tue, localizations.wed,
+                    localizations.thu, localizations.fri, localizations.sat, localizations.sun];
       return days[date.weekday];
     } else {
       return '${date.day}/${date.month}/${date.year}';

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../DI/setup_get_it.dart';
 import '../../presentation/cubit/focus_session/focus_session_cubit.dart';
 import '../../presentation/cubit/focus_session/focus_session_state.dart';
+import '../../core/localization/app_localizations.dart';
 import 'dart:math' as math;
 
 class ActiveSessionScreen extends StatelessWidget {
@@ -9,11 +11,13 @@ class ActiveSessionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+
     return PopScope(
       canPop: false, // Prevent back button
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Focus Session'),
+          title: Text(localizations.activeSession),
           automaticallyImplyLeading: false, // Remove back button
         ),
         body: BlocConsumer<FocusSessionCubit, FocusSessionState>(
@@ -44,11 +48,11 @@ class ActiveSessionScreen extends StatelessWidget {
                 children: [
                   const Icon(Icons.error_outline, size: 64),
                   const SizedBox(height: 16),
-                  const Text('No active session'),
+                  Text(localizations.errorSessionActive),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Go Back'),
+                    child: Text(localizations.backToLists),
                   ),
                 ],
               ),
@@ -61,6 +65,8 @@ class ActiveSessionScreen extends StatelessWidget {
 
   void _showCompletionDialog(
       BuildContext context, FocusSessionCompleted state) {
+    final localizations = AppLocalizations.of(context);
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -69,19 +75,19 @@ class ActiveSessionScreen extends StatelessWidget {
           children: [
             Icon(Icons.celebration, color: Colors.amber[700], size: 28),
             const SizedBox(width: 12),
-            const Text('Session Completed!'),
+            Text(localizations.sessionCompleted),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Great job!',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              localizations.greatJob,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'You stayed focused for ${state.completedSession.durationMinutes} minutes',
+              localizations.sessionSuccessMessage(state.completedSession.durationMinutes),
               textAlign: TextAlign.center,
             ),
           ],
@@ -92,7 +98,7 @@ class ActiveSessionScreen extends StatelessWidget {
               Navigator.of(dialogContext).pop();
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
-            child: const Text('Done'),
+            child: Text(localizations.done),
           ),
         ],
       ),
@@ -111,6 +117,7 @@ class _ActiveSessionContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final totalSeconds = session.durationMinutes * 60;
     final progress = 1 - (remainingSeconds / totalSeconds);
@@ -132,7 +139,7 @@ class _ActiveSessionContent extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Stay Focused!',
+              localizations.stayFocused,
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[600],
@@ -225,7 +232,7 @@ class _ActiveSessionContent extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.pop(dialogContext);
-              await context.read<FocusSessionCubit>().cancelSession();
+              await getIt<FocusSessionCubit>().cancelSession();
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Session Cancelled')),

@@ -8,13 +8,27 @@ import 'app_list_state.dart';
 class AppListCubit extends Cubit<AppListState> {
   final AppRepository _appRepository;
   List<AppInfo> _allApps = [];
+  bool _isAppsLoaded = false;
 
   AppListCubit(this._appRepository) : super(AppListInitial());
 
   Future<void> loadInstalledApps() async {
+    // If apps are already loaded, just filter and emit
+    if (_isAppsLoaded && _allApps.isNotEmpty) {
+      emit(AppListLoading());
+      final filteredApps = await _filterAppsInIsolate(_allApps, '', false);
+      emit(AppListLoaded(apps: filteredApps));
+      return;
+    }
+
+    // Emit loading immediately so UI shows loading indicator
     emit(AppListLoading());
+
     try {
+      // Get apps from native - this might take time but won't freeze UI
+      // because we already emitted loading state
       _allApps = await _appRepository.getInstalledApps();
+      _isAppsLoaded = true;
 
       // Use isolate for filtering to avoid blocking UI
       final filteredApps = await _filterAppsInIsolate(_allApps, '', false);

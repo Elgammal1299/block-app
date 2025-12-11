@@ -53,40 +53,40 @@ Future<void> setupGetIt() async {
     ),
   );
 
-  // ==================== Cubits - Factory ====================
-  // Cubits are created fresh each time they are requested
-  // This ensures proper state management and prevents memory leaks
+  // ==================== Cubits - Singleton ====================
+  // All Cubits are Singletons to maintain consistent state across screens
+  // This is required when using bloc parameter with BlocBuilder
 
-  getIt.registerFactory<ThemeCubit>(
-    () => ThemeCubit(getIt<SettingsRepository>()),
+  getIt.registerSingleton<ThemeCubit>(
+    ThemeCubit(getIt<SettingsRepository>()),
   );
 
-  getIt.registerFactory<BlockedAppsCubit>(
-    () => BlockedAppsCubit(getIt<AppRepository>()),
+  getIt.registerSingleton<BlockedAppsCubit>(
+    BlockedAppsCubit(getIt<AppRepository>()),
   );
 
-  getIt.registerFactory<AppListCubit>(
-    () => AppListCubit(getIt<AppRepository>()),
+  getIt.registerSingleton<AppListCubit>(
+    AppListCubit(getIt<AppRepository>()),
   );
 
-  getIt.registerFactory<ScheduleCubit>(
-    () => ScheduleCubit(getIt<SettingsRepository>()),
+  getIt.registerSingleton<ScheduleCubit>(
+    ScheduleCubit(getIt<SettingsRepository>()),
   );
 
-  getIt.registerFactory<StatisticsCubit>(
-    () => StatisticsCubit(getIt<AppRepository>()),
+  getIt.registerSingleton<StatisticsCubit>(
+    StatisticsCubit(getIt<AppRepository>()),
   );
 
-  getIt.registerFactory<LocaleCubit>(
-    () => LocaleCubit(getIt<SettingsRepository>()),
+  getIt.registerSingleton<LocaleCubit>(
+    LocaleCubit(getIt<SettingsRepository>()),
   );
 
-  getIt.registerFactory<FocusListCubit>(
-    () => FocusListCubit(getIt<FocusRepository>()),
+  getIt.registerSingleton<FocusListCubit>(
+    FocusListCubit(getIt<FocusRepository>()),
   );
 
-  getIt.registerFactory<FocusSessionCubit>(
-    () => FocusSessionCubit(
+  getIt.registerSingleton<FocusSessionCubit>(
+    FocusSessionCubit(
       getIt<FocusRepository>(),
       getIt<SettingsRepository>(),
     ),

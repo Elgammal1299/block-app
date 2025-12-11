@@ -11,12 +11,16 @@ import 'package:block_app/presentation/cubit/theme/theme_cubit.dart';
 import 'package:block_app/presentation/cubit/theme/theme_state.dart';
 import 'package:block_app/presentation/cubit/locale/locale_cubit.dart';
 import 'package:block_app/presentation/cubit/locale/locale_state.dart';
+import 'package:block_app/presentation/cubit/app_list/app_list_cubit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Setup dependency injection
   await setupGetIt();
+
+  // Pre-load apps in background (don't await - let it load async)
+  _preloadApps();
 
   // Check if all permissions are granted
   final platformService = getIt<PlatformChannelService>();
@@ -28,6 +32,16 @@ void main() async {
   runApp(MyApp(
     initialRoute: allPermissionsGranted ? AppRoutes.home : AppRoutes.permissions,
   ));
+}
+
+/// Pre-load apps in background to make them ready when needed
+Future<void> _preloadApps() async {
+  try {
+    final appListCubit = getIt<AppListCubit>();
+    await appListCubit.loadInstalledApps();
+  } catch (e) {
+    // Silently fail - apps will load when needed
+  }
 }
 
 /// Root widget - Clean and simple
@@ -71,6 +85,7 @@ class MyApp extends StatelessWidget {
               supportedLocales: AppLocalizations.supportedLocales,
               locale: locale,
               initialRoute: initialRoute,
+              
               onGenerateRoute: AppRouter.generateRoute,
             );
           },

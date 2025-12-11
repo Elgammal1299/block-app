@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../DI/setup_get_it.dart';
 import '../../presentation/cubit/app_list/app_list_cubit.dart';
 import '../../presentation/cubit/app_list/app_list_state.dart';
 import '../../presentation/cubit/blocked_apps/blocked_apps_cubit.dart';
@@ -16,7 +17,6 @@ class AppSelectionScreen extends StatefulWidget {
 
 class _AppSelectionScreenState extends State<AppSelectionScreen> {
   final Set<String> _selectedPackages = {};
-  bool _isLoading = false;
 
   @override
   void initState() {
@@ -30,32 +30,30 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
   Future<void> _loadData() async {
     if (!mounted) return;
 
-    final appListCubit = context.read<AppListCubit>();
-    final blockedAppsCubit = context.read<BlockedAppsCubit>();
+    final appListCubit = getIt<AppListCubit>();
+    final blockedAppsCubit = getIt<BlockedAppsCubit>();
 
-    setState(() => _isLoading = true);
-
-    // Load installed apps
-    await appListCubit.loadInstalledApps();
+    // Start loading apps (don't await - let it load in background)
+    // This allows the CircularProgressIndicator to animate smoothly
+    appListCubit.loadInstalledApps();
 
     // Load currently blocked apps and add to selection
     await blockedAppsCubit.loadBlockedApps();
 
     if (mounted) {
       final blockedAppsState = blockedAppsCubit.state;
-      setState(() {
-        if (blockedAppsState is BlockedAppsLoaded) {
+      if (blockedAppsState is BlockedAppsLoaded) {
+        setState(() {
           _selectedPackages.addAll(
             blockedAppsState.blockedApps.map((app) => app.packageName),
           );
-        }
-        _isLoading = false;
-      });
+        });
+      }
     }
   }
 
   Future<void> _saveSelection() async {
-    final appListCubit = context.read<AppListCubit>();
+    final appListCubit = getIt<AppListCubit>();
     final appListState = appListCubit.state;
 
     // Create BlockedApp objects for selected packages
@@ -104,6 +102,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
         ],
       ),
       body: BlocBuilder<AppListCubit, AppListState>(
+        bloc: getIt<AppListCubit>(),
         builder: (context, state) {
           return Column(
             children: [
@@ -119,7 +118,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
                     ),
                   ),
                   onChanged: (value) {
-                    context.read<AppListCubit>().setSearchQuery(value);
+                    getIt<AppListCubit>().setSearchQuery(value);
                   },
                 ),
               ),
@@ -134,7 +133,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
                     Switch(
                       value: state is AppListLoaded ? state.showSystemApps : false,
                       onChanged: (value) {
-                        context.read<AppListCubit>().toggleShowSystemApps();
+                        getIt<AppListCubit>().toggleShowSystemApps();
                       },
                     ),
                   ],
@@ -162,7 +161,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
 
               // Apps List
               Expanded(
-                child: _isLoading
+                child: state is AppListLoading
                     ? const Center(child: CircularProgressIndicator())
                     : state is AppListLoaded
                         ? state.apps.isEmpty
@@ -184,7 +183,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen> {
                                 child: Text('Error: ${state.message}'),
                               )
                             : const Center(
-                                child: Text('Loading...'),
+                                child: CircularProgressIndicator(),
                               ),
               ),
             ],

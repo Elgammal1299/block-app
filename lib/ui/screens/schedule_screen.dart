@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../DI/setup_get_it.dart';
 import '../../presentation/cubit/schedule/schedule_cubit.dart';
 import '../../presentation/cubit/schedule/schedule_state.dart';
 import '../../data/models/schedule.dart';
@@ -33,6 +34,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         title: const Text('Block Schedules'),
       ),
       body: BlocBuilder<ScheduleCubit, ScheduleState>(
+        bloc: getIt<ScheduleCubit>(),
         builder: (context, state) {
           if (state is ScheduleLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -111,7 +113,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 return ScheduleCard(
                   schedule: schedule,
                   onToggle: () {
-                    context.read<ScheduleCubit>().toggleSchedule(schedule.id);
+                    getIt<ScheduleCubit>().toggleSchedule(schedule.id);
                   },
                   onEdit: () {
                     _showAddScheduleDialog(schedule);
@@ -148,7 +150,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
           TextButton(
             onPressed: () {
-              context.read<ScheduleCubit>().removeSchedule(schedule.id);
+              getIt<ScheduleCubit>().removeSchedule(schedule.id);
               Navigator.pop(context);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -238,7 +240,7 @@ class _ScheduleDialogState extends State<_ScheduleDialog> {
       return;
     }
 
-    final scheduleCubit = context.read<ScheduleCubit>();
+    final scheduleCubit = getIt<ScheduleCubit>();
     final schedule = Schedule(
       id: widget.existingSchedule?.id ?? '',
       startTime: _startTime,
