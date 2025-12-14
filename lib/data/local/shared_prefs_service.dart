@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/blocked_app.dart';
 import '../models/schedule.dart';
+import '../models/app_usage_limit.dart';
 import '../models/focus_list.dart';
 import '../models/focus_session.dart';
 import '../models/focus_session_history.dart';
@@ -126,6 +127,35 @@ class SharedPrefsService {
       schedules[index] =
           schedules[index].copyWith(isEnabled: !schedules[index].isEnabled);
       return await saveSchedules(schedules);
+    }
+    return false;
+  }
+
+  // ========== Usage Limits ==========
+
+  Future<List<AppUsageLimit>> getUsageLimits() async {
+    final String? jsonString =
+        _preferences?.getString(AppConstants.keyUsageLimits);
+    if (jsonString == null || jsonString.isEmpty) return [];
+
+    final List<dynamic> jsonList = json.decode(jsonString);
+    return jsonList.map((json) => AppUsageLimit.fromJson(json)).toList();
+  }
+
+  Future<bool> saveUsageLimits(List<AppUsageLimit> limits) async {
+    final jsonList = limits.map((limit) => limit.toJson()).toList();
+    final jsonString = json.encode(jsonList);
+    return await _preferences?.setString(
+            AppConstants.keyUsageLimits, jsonString) ??
+        false;
+  }
+
+  Future<bool> updateUsageTime(String packageName, int usedMinutes) async {
+    final limits = await getUsageLimits();
+    final index = limits.indexWhere((l) => l.packageName == packageName);
+    if (index != -1) {
+      limits[index] = limits[index].copyWith(usedMinutesToday: usedMinutes);
+      return await saveUsageLimits(limits);
     }
     return false;
   }

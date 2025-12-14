@@ -1,6 +1,7 @@
 package com.example.block_app.services
 
 import android.app.*
+import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -22,7 +23,10 @@ class AppMonitorService : Service() {
         private const val PREFS_NAME = "app_blocker"
         private const val KEY_SCHEDULES = "schedules"
         private const val KEY_BLOCKED_APPS = "blocked_apps"
+        private const val KEY_USAGE_LIMITS = "usage_limits"
         private const val KEY_MONITORING_ENABLED = "monitoring_enabled"
+        private const val KEY_DAILY_USAGE = "daily_usage"
+        private const val KEY_LAST_RESET_DATE = "last_reset_date"
     }
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + Job())
@@ -74,12 +78,198 @@ class AppMonitorService : Service() {
         monitoringJob = serviceScope.launch {
             while (isActive) {
                 try {
+                    checkDailyReset()
+                    checkCurrentAppUsageLimit()  // Check current app first (more important)
+                    checkUsageLimits()
                     checkSchedulesAndUpdate()
-                    delay(10000) // Check every 10 seconds
+                    delay(3000) // Check every 3 seconds for faster response
                 } catch (e: Exception) {
                     Log.e(TAG, "Error in monitoring loop: ${e.message}")
                 }
             }
+        }
+    }
+
+    private fun checkDailyReset() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val lastResetDate = prefs.getString(KEY_LAST_RESET_DATE, null)
+        val today = Calendar.getInstance().get(Calendar.DAY_OF_YEAR).toString() +
+                    Calendar.getInstance().get(Calendar.YEAR).toString()
+
+        if (lastResetDate != today) {
+            // New day - reset all usage counters
+            prefs.edit()
+                .putString(KEY_DAILY_USAGE, "{}")
+                .putString(KEY_LAST_RESET_DATE, today)
+                .apply()
+            Log.d(TAG, "Daily usage reset for new day")
+        }
+    }
+
+    private fun checkUsageLimits() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val usageLimitsJson = prefs.getString(KEY_USAGE_LIMITS, null) ?: return
+
+        try {
+            val limitsArray = JSONArray(usageLimitsJson)
+            if (limitsArray.length() == 0) return
+
+            // Get current app usage using UsageStatsManager
+            val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
+            val calendar = Calendar.getInstance()
+            calendar.set(Calendar.HOUR_OF_DAY, 0)
+            calendar.set(Calendar.MINUTE, 0)
+            calendar.set(Calendar.SECOND, 0)
+            val startTime = calendar.timeInMillis
+            val endTime = System.currentTimeMillis()
+
+            val stats = usageStatsManager.queryUsageStats(
+                android.app.usage.UsageStatsManager.INTERVAL_DAILY,
+                startTime,
+                endTime
+            )
+
+            // Create a map of package -> total time in minutes
+            val usageMap = mutableMapOf<String, Int>()
+            stats?.forEach { stat ->
+                val totalTimeMinutes = (stat.totalTimeInForeground / 1000 / 60).toInt()
+                usageMap[stat.packageName] = totalTimeMinutes
+            }
+
+            // Check each limit
+            for (i in 0 until limitsArray.length()) {
+                val limit = limitsArray.getJSONObject(i)
+                val packageName = limit.getString("packageName")
+                val dailyLimitMinutes = limit.getInt("dailyLimitMinutes")
+                val isEnabled = limit.optBoolean("isEnabled", true)
+
+                if (!isEnabled) continue
+
+                val usedMinutes = usageMap[packageName] ?: 0
+
+                // If limit is reached, just log it
+                // The actual blocking is handled by the accessibility service
+                if (usedMinutes >= dailyLimitMinutes) {
+                    Log.d(TAG, "Usage limit reached for $packageName: $usedMinutes/$dailyLimitMinutes minutes")
+                }
+            }
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking usage limits: ${e.message}")
+        }
+    }
+
+    private fun checkCurrentAppUsageLimit() {
+        try {
+            // Get the currently running foreground app
+            val currentPackage = getForegroundApp() ?: return
+
+            // Don't block our own app or launcher
+            if (currentPackage == packageName || currentPackage.contains("launcher")) {
+                return
+            }
+
+            // Check if this app has reached its usage limit
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val usageLimitsJson = prefs.getString(KEY_USAGE_LIMITS, null) ?: return
+
+            val limitsArray = JSONArray(usageLimitsJson)
+            for (i in 0 until limitsArray.length()) {
+                val limit = limitsArray.getJSONObject(i)
+                if (limit.getString("packageName") == currentPackage) {
+                    val isEnabled = limit.optBoolean("isEnabled", true)
+                    if (!isEnabled) continue
+
+                    val dailyLimitMinutes = limit.getInt("dailyLimitMinutes")
+
+                    // Get current app usage using UsageStatsManager
+                    val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+                    if (usageStatsManager == null) {
+                        Log.e(TAG, "UsageStatsManager is null")
+                        return
+                    }
+
+                    // Get total usage for today
+                    val calendar = Calendar.getInstance()
+                    calendar.set(Calendar.HOUR_OF_DAY, 0)
+                    calendar.set(Calendar.MINUTE, 0)
+                    calendar.set(Calendar.SECOND, 0)
+                    calendar.set(Calendar.MILLISECOND, 0)
+                    val startOfDay = calendar.timeInMillis
+                    val currentTime = System.currentTimeMillis()
+
+                    val todayStats = usageStatsManager.queryUsageStats(
+                        UsageStatsManager.INTERVAL_DAILY,
+                        startOfDay,
+                        currentTime
+                    )
+
+                    val appStat = todayStats?.find { it.packageName == currentPackage }
+                    val usedMinutes = if (appStat != null) {
+                        (appStat.totalTimeInForeground / 1000 / 60).toInt()
+                    } else {
+                        0
+                    }
+
+                    Log.d(TAG, "Checking current app: $currentPackage - Used: $usedMinutes/$dailyLimitMinutes minutes")
+
+                    // If limit is reached, show block overlay and go home
+                    if (usedMinutes >= dailyLimitMinutes) {
+                        Log.d(TAG, "⚠️ LIMIT REACHED! Showing block screen for $currentPackage - $usedMinutes/$dailyLimitMinutes minutes")
+
+                        // Launch block overlay activity
+                        val overlayIntent = Intent(this, com.example.block_app.ui.BlockOverlayActivity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                            addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+                            putExtra("blocked_package", currentPackage)
+                            putExtra("block_reason", "usage_limit_reached")
+                        }
+                        startActivity(overlayIntent)
+
+                        // Force the user to go to home screen to close the blocked app
+                        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                            addCategory(Intent.CATEGORY_HOME)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        startActivity(homeIntent)
+                    }
+
+                    // Only check the first matching limit
+                    break
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking current app usage limit: ${e.message}", e)
+        }
+    }
+
+    private fun getForegroundApp(): String? {
+        return try {
+            val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+            if (usageStatsManager == null) {
+                Log.e(TAG, "UsageStatsManager is null")
+                return null
+            }
+
+            val currentTime = System.currentTimeMillis()
+            // Query usage stats for the last 2 seconds
+            val stats = usageStatsManager.queryUsageStats(
+                UsageStatsManager.INTERVAL_DAILY,
+                currentTime - 2000,
+                currentTime
+            )
+
+            if (stats == null || stats.isEmpty()) {
+                return null
+            }
+
+            // Get the app with the most recent timestamp
+            val currentApp = stats.maxByOrNull { it.lastTimeUsed }
+            currentApp?.packageName
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting foreground app: ${e.message}", e)
+            null
         }
     }
 

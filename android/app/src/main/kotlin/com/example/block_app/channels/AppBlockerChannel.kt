@@ -10,6 +10,8 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import com.example.block_app.utils.AppInfoUtil
 import com.example.block_app.utils.PermissionUtil
+import com.example.block_app.utils.UsageStatsUtil
+import com.example.block_app.utils.WorkManagerUtil
 import com.example.block_app.services.AppMonitorService
 
 class AppBlockerChannel(
@@ -19,6 +21,8 @@ class AppBlockerChannel(
 
     private val appInfoUtil = AppInfoUtil(activity)
     private val permissionUtil = PermissionUtil(activity)
+    private val usageStatsUtil = UsageStatsUtil(activity)
+    private val workManagerUtil = WorkManagerUtil(activity)
 
     fun setupMethodChannel() {
         channel.setMethodCallHandler(this)
@@ -150,20 +154,58 @@ class AppBlockerChannel(
                 }
             }
 
+            // Update usage limits
+            "updateUsageLimits" -> {
+                try {
+                    val limitsJson = call.argument<String>("limitsJson")
+                    if (limitsJson != null) {
+                        val prefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
+                        prefs.edit().putString("usage_limits", limitsJson).apply()
+                        Log.d("AppBlockerChannel", "Usage limits updated: $limitsJson")
+                        result.success(null)
+                    } else {
+                        result.error("ERROR", "Limits JSON is null", null)
+                    }
+                } catch (e: Exception) {
+                    result.error("ERROR", "Failed to update usage limits: ${e.message}", null)
+                }
+            }
+
             // Get app usage stats
             "getAppUsageStats" -> {
                 try {
                     val startTime = call.argument<Long>("startTime")
                     val endTime = call.argument<Long>("endTime")
                     if (startTime != null && endTime != null) {
-                        // TODO: Get usage stats
-                        val usageStats = mapOf<String, Long>()
+                        Log.d("AppBlockerChannel", "Getting usage stats from $startTime to $endTime")
+
+                        // Get usage stats from utility
+                        val usageStats = usageStatsUtil.getAppUsageStats(startTime, endTime)
+
+                        Log.d("AppBlockerChannel", "Found ${usageStats.size} apps with usage data")
                         result.success(usageStats)
                     } else {
                         result.error("ERROR", "Start or end time is null", null)
                     }
                 } catch (e: Exception) {
+                    Log.e("AppBlockerChannel", "Failed to get usage stats", e)
                     result.error("ERROR", "Failed to get usage stats: ${e.message}", null)
+                }
+            }
+
+            // Get app name from package name
+            "getAppName" -> {
+                try {
+                    val packageName = call.argument<String>("packageName")
+                    if (packageName != null) {
+                        val appName = usageStatsUtil.getAppName(packageName)
+                        result.success(appName)
+                    } else {
+                        result.error("ERROR", "Package name is null", null)
+                    }
+                } catch (e: Exception) {
+                    Log.e("AppBlockerChannel", "Failed to get app name", e)
+                    result.error("ERROR", "Failed to get app name: ${e.message}", null)
                 }
             }
 
@@ -209,6 +251,29 @@ class AppBlockerChannel(
                     result.success(null)
                 } catch (e: Exception) {
                     result.error("ERROR", "Failed to end focus session: ${e.message}", null)
+                }
+            }
+
+            // Background Work Methods
+            "scheduleDailySnapshot" -> {
+                try {
+                    workManagerUtil.scheduleDailySnapshot()
+                    Log.d("AppBlockerChannel", "Daily snapshot scheduled")
+                    result.success(null)
+                } catch (e: Exception) {
+                    Log.e("AppBlockerChannel", "Failed to schedule daily snapshot", e)
+                    result.error("ERROR", "Failed to schedule daily snapshot: ${e.message}", null)
+                }
+            }
+
+            "runSnapshotNow" -> {
+                try {
+                    workManagerUtil.runSnapshotNow()
+                    Log.d("AppBlockerChannel", "Running snapshot now")
+                    result.success(null)
+                } catch (e: Exception) {
+                    Log.e("AppBlockerChannel", "Failed to run snapshot", e)
+                    result.error("ERROR", "Failed to run snapshot: ${e.message}", null)
                 }
             }
 

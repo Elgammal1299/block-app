@@ -224,45 +224,64 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Today\'s Summary',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    'Blocked Apps',
-                    totalBlockedApps.toString(),
-                    Icons.block,
-                    Colors.red,
+      child: InkWell(
+        onTap: totalBlockedApps > 0
+            ? () {
+                Navigator.of(context).pushNamed(AppRoutes.blockedAppsList);
+              }
+            : null,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Today\'s Summary',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    'Active Schedules',
-                    enabledSchedulesCount.toString(),
-                    Icons.schedule,
-                    Colors.blue,
+                  if (totalBlockedApps > 0)
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      size: 16,
+                      color: Colors.grey[400],
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatItem(
+                      'Blocked Apps',
+                      totalBlockedApps.toString(),
+                      Icons.block,
+                      Colors.red,
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    'Block Attempts',
-                    totalBlockAttempts.toString(),
-                    Icons.warning,
-                    Colors.orange,
+                  Expanded(
+                    child: _buildStatItem(
+                      'Active Schedules',
+                      enabledSchedulesCount.toString(),
+                      Icons.schedule,
+                      Colors.blue,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  Expanded(
+                    child: _buildStatItem(
+                      'Block Attempts',
+                      totalBlockAttempts.toString(),
+                      Icons.warning,
+                      Colors.orange,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -298,11 +317,27 @@ class _HomeScreenState extends State<HomeScreen> {
       childAspectRatio: 1.5,
       children: [
         _buildActionCard(
-          'Manage Apps',
-          Icons.apps,
-          Colors.purple,
+          'Block Apps',
+          Icons.block,
+          Colors.red,
           () {
             Navigator.of(context).pushNamed('/app-selection');
+          },
+        ),
+        _buildActionCard(
+          'Block List',
+          Icons.block_flipped,
+          Colors.red,
+          () {
+            Navigator.of(context).pushNamed(AppRoutes.blockedAppsList);
+          },
+        ),
+        _buildActionCard(
+          'Usage Limits',
+          Icons.timer_outlined,
+          Colors.orange,
+          () {
+            Navigator.of(context).pushNamed(AppRoutes.usageLimitSelection);
           },
         ),
         _buildActionCard(
@@ -314,22 +349,19 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
         _buildActionCard(
-          'Statistics',
-          Icons.bar_chart,
-          Colors.orange,
-          () {
-            // TODO: Navigate to Statistics
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Statistics coming soon!')),
-            );
-          },
-        ),
-        _buildActionCard(
           'Focus Mode',
           Icons.self_improvement,
           Colors.blue,
           () {
             Navigator.pushNamed(context, AppRoutes.focusLists);
+          },
+        ),
+        _buildActionCard(
+          'Statistics',
+          Icons.bar_chart,
+          Colors.purple,
+          () {
+            Navigator.of(context).pushNamed(AppRoutes.statisticsDashboard);
           },
         ),
       ],

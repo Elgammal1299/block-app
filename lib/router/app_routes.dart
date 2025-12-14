@@ -8,6 +8,8 @@ class AppRoutes {
   // App management routes
   static const appSelection = '/app-selection';
   static const appScheduleSelection = '/app-schedule-selection';
+  static const blockedAppsList = '/blocked-apps-list';
+  static const usageLimitSelection = '/usage-limit-selection';
 
   // Schedule routes
   static const schedules = '/schedules';
@@ -18,4 +20,7 @@ class AppRoutes {
   static const createFocusList = '/create-focus-list';
   static const activeSession = '/active-session';
   static const focusHistory = '/focus-history';
+
+  // Statistics routes
+  static const statisticsDashboard = '/statistics-dashboard';
 }

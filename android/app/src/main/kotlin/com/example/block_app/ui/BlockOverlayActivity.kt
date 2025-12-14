@@ -22,6 +22,7 @@ class BlockOverlayActivity : Activity() {
 
     private lateinit var blockedPackage: String
     private lateinit var appInfoUtil: AppInfoUtil
+    private var blockReason: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,10 +36,15 @@ class BlockOverlayActivity : Activity() {
         // Keep screen on
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
+        // Show over other apps and prevent dismissing
+        window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+        window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+
         setContentView(R.layout.activity_block_overlay)
 
         appInfoUtil = AppInfoUtil(this)
         blockedPackage = intent.getStringExtra("blocked_package") ?: ""
+        blockReason = intent.getStringExtra("block_reason")
 
         setupUI()
     }
@@ -52,8 +58,15 @@ class BlockOverlayActivity : Activity() {
 
         // Set app name
         val appName = appInfoUtil.getAppName(blockedPackage)
-        titleText.text = "\"$appName\" is Blocked"
-        messageText.text = "This app is blocked during your focus time."
+
+        // Different messages based on block reason
+        if (blockReason == "usage_limit_reached") {
+            titleText.text = "Daily Limit Reached!"
+            messageText.text = "You've used your daily limit for \"$appName\". Come back tomorrow!"
+        } else {
+            titleText.text = "\"$appName\" is Blocked"
+            messageText.text = "This app is blocked during your focus time."
+        }
 
         // Set random motivational quote
         motivationalText.text = getRandomMotivationalQuote()
@@ -136,6 +149,11 @@ class BlockOverlayActivity : Activity() {
     // Prevent the activity from being destroyed when the user leaves
     override fun onPause() {
         super.onPause()
-        // Don't finish here, let the user choose
+        // If the block reason is usage limit, we should finish the activity
+        // because the AppMonitorService will re-launch it if user tries to open the app again
+        if (blockReason == "usage_limit_reached") {
+            finish()
+        }
+        // For other block reasons (schedules, focus mode), don't finish
     }
 }

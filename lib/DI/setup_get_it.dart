@@ -1,9 +1,11 @@
 import 'package:get_it/get_it.dart';
 import 'package:block_app/data/local/shared_prefs_service.dart';
+import 'package:block_app/data/local/database_service.dart';
 import 'package:block_app/services/platform_channel_service.dart';
 import 'package:block_app/data/repositories/app_repository.dart';
 import 'package:block_app/data/repositories/settings_repository.dart';
 import 'package:block_app/data/repositories/focus_repository.dart';
+import 'package:block_app/data/repositories/statistics_repository.dart';
 import 'package:block_app/presentation/cubit/theme/theme_cubit.dart';
 import 'package:block_app/presentation/cubit/blocked_apps/blocked_apps_cubit.dart';
 import 'package:block_app/presentation/cubit/app_list/app_list_cubit.dart';
@@ -12,6 +14,7 @@ import 'package:block_app/presentation/cubit/statistics/statistics_cubit.dart';
 import 'package:block_app/presentation/cubit/locale/locale_cubit.dart';
 import 'package:block_app/presentation/cubit/focus_list/focus_list_cubit.dart';
 import 'package:block_app/presentation/cubit/focus_session/focus_session_cubit.dart';
+import 'package:block_app/presentation/cubit/usage_limit/usage_limit_cubit.dart';
 
 /// Global GetIt instance for dependency injection
 final getIt = GetIt.instance;
@@ -53,6 +56,20 @@ Future<void> setupGetIt() async {
     ),
   );
 
+  // Database Service
+  final databaseService = DatabaseService();
+  await databaseService.database; // Initialize database
+  getIt.registerSingleton<DatabaseService>(databaseService);
+
+  // Statistics Repository
+  getIt.registerSingleton<StatisticsRepository>(
+    StatisticsRepository(
+      getIt<DatabaseService>(),
+      getIt<AppRepository>(),
+      getIt<PlatformChannelService>(),
+    ),
+  );
+
   // ==================== Cubits - Singleton ====================
   // All Cubits are Singletons to maintain consistent state across screens
   // This is required when using bloc parameter with BlocBuilder
@@ -74,11 +91,15 @@ Future<void> setupGetIt() async {
   );
 
   getIt.registerSingleton<StatisticsCubit>(
-    StatisticsCubit(getIt<AppRepository>()),
+    StatisticsCubit(getIt<StatisticsRepository>()),
   );
 
   getIt.registerSingleton<LocaleCubit>(
     LocaleCubit(getIt<SettingsRepository>()),
+  );
+
+  getIt.registerSingleton<UsageLimitCubit>(
+    UsageLimitCubit(getIt<AppRepository>()),
   );
 
   getIt.registerSingleton<FocusListCubit>(

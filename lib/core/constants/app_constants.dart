@@ -5,6 +5,7 @@ class AppConstants {
   // SharedPreferences Keys
   static const String keyBlockedApps = 'blocked_apps';
   static const String keySchedules = 'schedules';
+  static const String keyUsageLimits = 'usage_limits';
   static const String keyFocusPresets = 'focus_presets';
   static const String keySettingsPin = 'settings_pin';
   static const String keyDarkMode = 'dark_mode';
@@ -35,6 +36,7 @@ class AppConstants {
   static const String methodStopMonitoringService = 'stopMonitoringService';
   static const String methodUpdateBlockedApps = 'updateBlockedApps';
   static const String methodUpdateSchedules = 'updateSchedules';
+  static const String methodUpdateUsageLimits = 'updateUsageLimits';
   static const String methodGetAppUsageStats = 'getAppUsageStats';
   static const String methodStartFocusSession = 'startFocusSession';
   static const String methodEndFocusSession = 'endFocusSession';

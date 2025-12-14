@@ -181,6 +181,19 @@ class PlatformChannelService {
     }
   }
 
+  // ========== Usage Limits ==========
+
+  Future<void> updateUsageLimitsJson(String limitsJson) async {
+    try {
+      await _channel.invokeMethod(
+        AppConstants.methodUpdateUsageLimits,
+        {'limitsJson': limitsJson},
+      );
+    } on PlatformException catch (e) {
+      print('Error updating usage limits: ${e.message}');
+    }
+  }
+
   // ========== Usage Statistics ==========
 
   Future<Map<String, int>> getAppUsageStats(
@@ -200,6 +213,20 @@ class PlatformChannelService {
     } on PlatformException catch (e) {
       print('Error getting app usage stats: ${e.message}');
       return {};
+    }
+  }
+
+  /// Get app name from package name
+  Future<String?> getAppName(String packageName) async {
+    try {
+      final String result = await _channel.invokeMethod(
+        'getAppName',
+        {'packageName': packageName},
+      );
+      return result;
+    } on PlatformException catch (e) {
+      print('Error getting app name: ${e.message}');
+      return null;
     }
   }
 

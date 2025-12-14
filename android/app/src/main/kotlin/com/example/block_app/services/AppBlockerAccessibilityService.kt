@@ -18,6 +18,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         private const val PREFS_NAME = "app_blocker"
         private const val KEY_BLOCKED_APPS = "blocked_apps"
         private const val KEY_SCHEDULES = "schedules"
+        private const val KEY_USAGE_LIMITS = "usage_limits"
         private const val KEY_TEMP_UNLOCK = "temp_unlock_until"
         private const val KEY_FOCUS_SESSION_PACKAGES = "focus_session_packages"
         private const val KEY_FOCUS_SESSION_END = "focus_session_end_time"
@@ -62,6 +63,15 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 Log.d(TAG, "Blocking app (Focus Mode): $packageName")
                 incrementBlockAttempts(packageName)
                 launchBlockOverlay(packageName)
+                performGlobalAction(GLOBAL_ACTION_HOME)
+                return
+            }
+
+            // Check if app has reached its usage limit (priority check)
+            if (hasReachedUsageLimit(packageName)) {
+                Log.d(TAG, "Blocking app (Usage Limit): $packageName")
+                incrementBlockAttempts(packageName)
+                launchBlockOverlay(packageName, "usage_limit_reached")
                 performGlobalAction(GLOBAL_ACTION_HOME)
                 return
             }
@@ -245,6 +255,71 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         return false
     }
 
+    private fun hasReachedUsageLimit(packageName: String): Boolean {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val usageLimitsJson = prefs.getString(KEY_USAGE_LIMITS, null) ?: return false
+
+        try {
+            val limitsArray = JSONArray(usageLimitsJson)
+
+            // Find this app in usage limits
+            for (i in 0 until limitsArray.length()) {
+                val limit = limitsArray.getJSONObject(i)
+                if (limit.getString("packageName") == packageName) {
+                    val isEnabled = limit.optBoolean("isEnabled", true)
+                    if (!isEnabled) {
+                        return false
+                    }
+
+                    val dailyLimitMinutes = limit.getInt("dailyLimitMinutes")
+
+                    // Get current app usage using UsageStatsManager
+                    val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as? android.app.usage.UsageStatsManager
+                    if (usageStatsManager == null) {
+                        Log.e(TAG, "UsageStatsManager is null")
+                        return false
+                    }
+
+                    val calendar = Calendar.getInstance()
+                    calendar.set(Calendar.HOUR_OF_DAY, 0)
+                    calendar.set(Calendar.MINUTE, 0)
+                    calendar.set(Calendar.SECOND, 0)
+                    calendar.set(Calendar.MILLISECOND, 0)
+                    val startTime = calendar.timeInMillis
+                    val endTime = System.currentTimeMillis()
+
+                    val stats = usageStatsManager.queryUsageStats(
+                        android.app.usage.UsageStatsManager.INTERVAL_DAILY,
+                        startTime,
+                        endTime
+                    )
+
+                    // Find usage for this specific package
+                    val usageStat = stats?.find { it.packageName == packageName }
+                    val usedMinutes = if (usageStat != null) {
+                        (usageStat.totalTimeInForeground / 1000 / 60).toInt()
+                    } else {
+                        0
+                    }
+
+                    Log.d(TAG, "Usage limit check for $packageName: $usedMinutes/$dailyLimitMinutes minutes")
+
+                    // Block if limit is reached
+                    if (usedMinutes >= dailyLimitMinutes) {
+                        Log.d(TAG, "✓ Usage limit reached for $packageName")
+                        return true
+                    }
+
+                    return false
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking usage limit: ${e.message}")
+        }
+
+        return false
+    }
+
     private fun isTemporarilyUnlocked(): Boolean {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val unlockUntil = prefs.getLong(KEY_TEMP_UNLOCK, 0)
@@ -266,12 +341,15 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         prefs.edit().putInt("attempts_$packageName", currentAttempts + 1).apply()
     }
 
-    private fun launchBlockOverlay(packageName: String) {
+    private fun launchBlockOverlay(packageName: String, blockReason: String? = null) {
         val intent = Intent(this, BlockOverlayActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
             addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
             putExtra("blocked_package", packageName)
+            if (blockReason != null) {
+                putExtra("block_reason", blockReason)
+            }
         }
         startActivity(intent)
     }

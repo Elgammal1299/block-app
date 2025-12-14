@@ -1,14 +1,18 @@
+import 'dart:typed_data';
+
 class AppUsageStats {
   final String packageName;
   final String appName;
   final int totalTimeInMillis;
   final DateTime date;
+  final Uint8List? icon;
 
   AppUsageStats({
     required this.packageName,
     required this.appName,
     required this.totalTimeInMillis,
     required this.date,
+    this.icon,
   });
 
   // Get total time in minutes
@@ -36,13 +40,15 @@ class AppUsageStats {
     String packageName,
     String appName,
     int timeInMillis,
-    DateTime date,
-  ) {
+    DateTime date, {
+    Uint8List? icon,
+  }) {
     return AppUsageStats(
       packageName: packageName,
       appName: appName,
       totalTimeInMillis: timeInMillis,
       date: date,
+      icon: icon,
     );
   }
 

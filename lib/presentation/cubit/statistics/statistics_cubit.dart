@@ -1,84 +1,52 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../data/models/app_usage_stats.dart';
-import '../../../data/repositories/app_repository.dart';
+import '../../../data/models/comparison_stats.dart';
+import '../../../data/repositories/statistics_repository.dart';
 import 'statistics_state.dart';
 
+/// Cubit for managing statistics dashboard state
 class StatisticsCubit extends Cubit<StatisticsState> {
-  final AppRepository _appRepository;
+  final StatisticsRepository _statisticsRepository;
 
-  StatisticsCubit(this._appRepository) : super(StatisticsInitial());
+  ComparisonMode _currentMode = ComparisonMode.todayVsYesterday;
 
-  Future<void> loadDailyStats() async {
+  StatisticsCubit(this._statisticsRepository) : super(StatisticsInitial());
+
+  /// Load dashboard data for the selected comparison mode
+  Future<void> loadDashboard({ComparisonMode? mode}) async {
+    if (mode != null) _currentMode = mode;
+
     emit(StatisticsLoading());
     try {
-      final now = DateTime.now();
-      final startOfDay = DateTime(now.year, now.month, now.day);
-      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
-
-      final statsMap = await _appRepository.getAppUsageStats(startOfDay, endOfDay);
-
-      final dailyStats = statsMap.entries
-          .map((entry) => AppUsageStats.fromMap(
-                entry.key,
-                entry.key, // We'll need to get app name separately
-                entry.value,
-                now,
-              ))
-          .toList()
-        ..sort((a, b) => b.totalTimeInMillis.compareTo(a.totalTimeInMillis));
-
-      if (state is StatisticsLoaded) {
-        final currentState = state as StatisticsLoaded;
-        emit(StatisticsLoaded(
-          dailyStats: dailyStats,
-          weeklyStats: currentState.weeklyStats,
-        ));
-      } else {
-        emit(StatisticsLoaded(dailyStats: dailyStats, weeklyStats: []));
-      }
+      final dashboardData = await _statisticsRepository.getDashboardData(_currentMode);
+      emit(StatisticsDashboardLoaded(
+        dashboardData: dashboardData,
+        currentMode: _currentMode,
+      ));
     } catch (e) {
       emit(StatisticsError(e.toString()));
     }
   }
 
-  Future<void> loadWeeklyStats() async {
-    emit(StatisticsLoading());
-    try {
-      final now = DateTime.now();
-      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-      final startOfWeekDay =
-          DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
-      final endOfWeek = DateTime(now.year, now.month, now.day, 23, 59, 59);
-
-      final statsMap =
-          await _appRepository.getAppUsageStats(startOfWeekDay, endOfWeek);
-
-      final weeklyStats = statsMap.entries
-          .map((entry) => AppUsageStats.fromMap(
-                entry.key,
-                entry.key, // We'll need to get app name separately
-                entry.value,
-                now,
-              ))
-          .toList()
-        ..sort((a, b) => b.totalTimeInMillis.compareTo(a.totalTimeInMillis));
-
-      if (state is StatisticsLoaded) {
-        final currentState = state as StatisticsLoaded;
-        emit(StatisticsLoaded(
-          dailyStats: currentState.dailyStats,
-          weeklyStats: weeklyStats,
-        ));
-      } else {
-        emit(StatisticsLoaded(dailyStats: [], weeklyStats: weeklyStats));
-      }
-    } catch (e) {
-      emit(StatisticsError(e.toString()));
-    }
+  /// Change comparison mode and reload data
+  Future<void> changeComparisonMode(ComparisonMode mode) async {
+    await loadDashboard(mode: mode);
   }
 
+  /// Refresh current dashboard data
   Future<void> refresh() async {
-    await loadDailyStats();
-    await loadWeeklyStats();
+    await loadDashboard();
   }
+
+  /// Save today's snapshot (call from app lifecycle or periodically)
+  Future<void> saveTodaySnapshot() async {
+    try {
+      await _statisticsRepository.saveTodaySnapshot();
+    } catch (e) {
+      // Silent fail - don't disrupt the app
+      // In production, log this error
+    }
+  }
+
+  /// Get current comparison mode
+  ComparisonMode get currentMode => _currentMode;
 }

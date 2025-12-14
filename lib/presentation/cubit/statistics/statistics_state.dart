@@ -1,58 +1,55 @@
 import 'package:equatable/equatable.dart';
 import '../../../data/models/app_usage_stats.dart';
+import '../../../data/models/comparison_stats.dart';
+import '../../../data/models/statistics_dashboard_data.dart';
 
+/// Base state for statistics
 abstract class StatisticsState extends Equatable {
   const StatisticsState();
 
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
+/// Initial state when cubit is created
 class StatisticsInitial extends StatisticsState {}
 
+/// Loading state when fetching statistics data
 class StatisticsLoading extends StatisticsState {}
 
-class StatisticsLoaded extends StatisticsState {
-  final List<AppUsageStats> dailyStats;
-  final List<AppUsageStats> weeklyStats;
+/// Loaded state with dashboard data
+class StatisticsDashboardLoaded extends StatisticsState {
+  final StatisticsDashboardData dashboardData;
+  final ComparisonMode currentMode;
 
-  const StatisticsLoaded({
-    required this.dailyStats,
-    required this.weeklyStats,
+  const StatisticsDashboardLoaded({
+    required this.dashboardData,
+    required this.currentMode,
   });
 
   @override
-  List<Object> get props => [dailyStats, weeklyStats];
+  List<Object?> get props => [dashboardData, currentMode];
 
-  int get totalDailyScreenTime {
-    return dailyStats.fold(0, (sum, stat) => sum + stat.totalTimeInMillis);
-  }
+  // Convenience getters
+  ComparisonStats get comparisonStats => dashboardData.comparisonStats;
+  List<AppUsageStats> get topApps => dashboardData.todayTopApps;
+  int get totalBlockAttempts => dashboardData.totalBlockAttempts;
+  List<PieChartData> get pieChartData => dashboardData.pieChartData;
 
-  int get totalWeeklyScreenTime {
-    return weeklyStats.fold(0, (sum, stat) => sum + stat.totalTimeInMillis);
-  }
-
-  String get totalDailyScreenTimeFormatted {
-    final hours = (totalDailyScreenTime / 3600000).floor();
-    final minutes = ((totalDailyScreenTime % 3600000) / 60000).floor();
-    if (hours > 0) {
-      return '${hours}h ${minutes}m';
-    } else {
-      return '${minutes}m';
-    }
-  }
-
-  String get totalWeeklyScreenTimeFormatted {
-    final hours = (totalWeeklyScreenTime / 3600000).floor();
-    final minutes = ((totalWeeklyScreenTime % 3600000) / 60000).floor();
-    if (hours > 0) {
-      return '${hours}h ${minutes}m';
-    } else {
-      return '${minutes}m';
+  // Get comparison label based on current mode
+  String get comparisonLabel {
+    switch (currentMode) {
+      case ComparisonMode.todayVsYesterday:
+        return 'Today vs Yesterday';
+      case ComparisonMode.thisWeekVsLastWeek:
+        return 'This Week vs Last Week';
+      case ComparisonMode.peakDay:
+        return 'Peak Day (Last 7 Days)';
     }
   }
 }
 
+/// Error state when something goes wrong
 class StatisticsError extends StatisticsState {
   final String message;
 

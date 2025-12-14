@@ -6,11 +6,14 @@ import 'package:block_app/ui/screens/home_screen.dart';
 import 'package:block_app/ui/screens/app_selection_screen.dart';
 import 'package:block_app/ui/screens/schedule_screen.dart';
 import 'package:block_app/ui/screens/app_schedule_selection_screen.dart';
+import 'package:block_app/ui/screens/blocked_apps_list_screen.dart';
+import 'package:block_app/ui/screens/usage_limit_selection_screen.dart';
 import 'package:block_app/ui/screens/focus_lists_screen.dart';
 import 'package:block_app/ui/screens/focus_list_detail_screen.dart';
 import 'package:block_app/ui/screens/create_focus_list_screen.dart';
 import 'package:block_app/ui/screens/active_session_screen.dart';
 import 'package:block_app/ui/screens/focus_history_screen.dart';
+import 'package:block_app/ui/screens/statistics_dashboard_screen.dart';
 import 'package:block_app/data/models/blocked_app.dart';
 import 'package:block_app/data/models/focus_list.dart';
 
@@ -36,6 +39,12 @@ class AppRouter {
         return RouterTransitions.buildHorizontal(
           AppScheduleSelectionScreen(selectedApps: apps),
         );
+
+      case AppRoutes.blockedAppsList:
+        return RouterTransitions.buildHorizontal(const BlockedAppsListScreen());
+
+      case AppRoutes.usageLimitSelection:
+        return RouterTransitions.buildHorizontal(const UsageLimitSelectionScreen());
 
       // Schedule routes
       case AppRoutes.schedules:
@@ -68,6 +77,10 @@ class AppRouter {
             ),
           ),
         );
+
+      // Statistics routes
+      case AppRoutes.statisticsDashboard:
+        return RouterTransitions.buildHorizontal(const StatisticsDashboardScreen());
 
       default:
         return null;
