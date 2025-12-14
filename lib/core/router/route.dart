@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:block_app/core/router/app_routes.dart';
 import 'package:block_app/core/router/router_transitions.dart';
 import 'package:block_app/feature/ui/view/screens/permissions_guide_screen.dart';
-import 'package:block_app/feature/ui/view/screens/home_screen.dart';
+import 'package:block_app/feature/nav_bar/nav_bar_screen.dart';
 import 'package:block_app/feature/ui/view/screens/app_selection_screen.dart';
 import 'package:block_app/feature/ui/view/screens/schedule_screen.dart';
 import 'package:block_app/feature/ui/view/screens/app_schedule_selection_screen.dart';
@@ -28,7 +28,7 @@ class AppRouter {
         );
 
       case AppRoutes.home:
-        return RouterTransitions.buildFade(const HomeScreen());
+        return RouterTransitions.buildFade(const NabBarScreen());
 
       // App management routes
       case AppRoutes.appSelection:
