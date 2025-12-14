@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:block_app/router/app_routes.dart';
-import 'package:block_app/router/route.dart';
-import 'package:block_app/DI/setup_get_it.dart';
+import 'package:block_app/core/router/app_routes.dart';
+import 'package:block_app/core/router/route.dart';
+import 'package:block_app/core/DI/setup_get_it.dart';
 import 'package:block_app/core/theme/app_theme.dart';
 import 'package:block_app/core/localization/app_localizations.dart';
-import 'package:block_app/services/platform_channel_service.dart';
-import 'package:block_app/presentation/cubit/theme/theme_cubit.dart';
-import 'package:block_app/presentation/cubit/theme/theme_state.dart';
-import 'package:block_app/presentation/cubit/locale/locale_cubit.dart';
-import 'package:block_app/presentation/cubit/locale/locale_state.dart';
-import 'package:block_app/presentation/cubit/app_list/app_list_cubit.dart';
+import 'package:block_app/core/services/platform_channel_service.dart';
+import 'package:block_app/feature/ui/view_model/theme_cubit/theme_cubit.dart';
+import 'package:block_app/feature/ui/view_model/theme_cubit/theme_state.dart';
+import 'package:block_app/feature/ui/view_model/locale_cubit/locale_cubit.dart';
+import 'package:block_app/feature/ui/view_model/locale_cubit/locale_state.dart';
+import 'package:block_app/feature/ui/view_model/app_list_cubit/app_list_cubit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
