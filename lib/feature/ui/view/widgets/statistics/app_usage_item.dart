@@ -1,164 +1,144 @@
 import 'package:flutter/material.dart';
 import '../../../../data/models/app_usage_stats.dart';
 import '../../../../data/models/app_usage_limit.dart';
+import '../../../../data/models/statistics_dashboard_data.dart';
 
-/// List item widget displaying app usage with optional limit progress bar
+/// List item widget displaying app usage with StayFree-style design
 class AppUsageItem extends StatelessWidget {
   final AppUsageStats stats;
   final AppUsageLimit? usageLimit;
   final int index;
+  final int
+  totalUsageTime; // Total usage time of all apps for percentage calculation
 
   const AppUsageItem({
     super.key,
     required this.stats,
     this.usageLimit,
     required this.index,
+    this.totalUsageTime = 0,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final hasLimit = usageLimit != null;
+    final percentage = totalUsageTime > 0
+        ? (stats.totalTimeInMillis / totalUsageTime * 100)
+        : 0.0;
+
+    // Get app-specific color
+    final appColor = PieChartColors.getColor(index);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
-        ),
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              // Rank badge
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: _getRankColor(index),
-                  shape: BoxShape.circle,
+          // App Icon (larger)
+          _buildAppIcon(appColor),
+          const SizedBox(width: 16),
+
+          // App info and progress
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // App name and time
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        stats.appName,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      stats.formattedTime,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: appColor,
+                      ),
+                    ),
+                  ],
                 ),
-                alignment: Alignment.center,
-                child: Text(
-                  '${index + 1}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                const SizedBox(height: 8),
+
+                // Progress bar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: (percentage / 100).clamp(0.0, 1.0),
+                    minHeight: 6,
+                    backgroundColor: appColor.withOpacity(0.15),
+                    valueColor: AlwaysStoppedAnimation<Color>(appColor),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
+                const SizedBox(height: 6),
 
-              // App Icon
-              _buildAppIcon(),
-              const SizedBox(width: 12),
-
-              // App name
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // Percentage and limit info
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      stats.appName,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
+                      '${percentage.toStringAsFixed(1)}% من الإجمالي',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.textTheme.bodySmall?.color?.withOpacity(
+                          0.7,
+                        ),
+                        fontWeight: FontWeight.w500,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     if (hasLimit)
-                      Text(
-                        '${usageLimit!.usedMinutesToday} / ${usageLimit!.dailyLimitMinutes} min',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: _getLimitColor(usageLimit!),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _getLimitColor(usageLimit!).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              usageLimit!.isLimitReached
+                                  ? Icons.warning_rounded
+                                  : Icons.timer_outlined,
+                              size: 12,
+                              color: _getLimitColor(usageLimit!),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${usageLimit!.usedMinutesToday}/${usageLimit!.dailyLimitMinutes}m',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: _getLimitColor(usageLimit!),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                   ],
                 ),
-              ),
-
-              // Usage time
-              Text(
-                stats.formattedTime,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-
-          // Progress bar if has limit
-          if (hasLimit) ...[
-            const SizedBox(height: 12),
-            _buildProgressBar(context),
-          ],
         ],
       ),
     );
-  }
-
-  Widget _buildProgressBar(BuildContext context) {
-    final theme = Theme.of(context);
-    final limit = usageLimit!;
-    final progress = limit.usagePercentage / 100;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: progress.clamp(0.0, 1.0),
-            minHeight: 8,
-            backgroundColor: theme.colorScheme.surfaceVariant,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              _getProgressColor(limit),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '${limit.usagePercentage.toStringAsFixed(0)}% used',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: _getLimitColor(limit),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Color _getRankColor(int rank) {
-    switch (rank) {
-      case 0:
-        return Colors.amber.shade600; // Gold
-      case 1:
-        return Colors.grey.shade500; // Silver
-      case 2:
-        return Colors.brown.shade400; // Bronze
-      default:
-        return Colors.blue.shade600;
-    }
-  }
-
-  Color _getProgressColor(AppUsageLimit limit) {
-    final percentage = limit.usagePercentage;
-    if (percentage >= 100) {
-      return Colors.red.shade700;
-    } else if (percentage >= 80) {
-      return Colors.orange.shade700;
-    } else if (percentage >= 60) {
-      return Colors.yellow.shade700;
-    } else {
-      return Colors.green.shade600;
-    }
   }
 
   Color _getLimitColor(AppUsageLimit limit) {
@@ -168,38 +148,31 @@ class AppUsageItem extends StatelessWidget {
     } else if (percentage >= 80) {
       return Colors.orange.shade700;
     } else {
-      return Colors.grey.shade600;
+      return Colors.green.shade600;
     }
   }
 
-  Widget _buildAppIcon() {
+  Widget _buildAppIcon(Color appColor) {
     return Container(
-      width: 40,
-      height: 40,
+      width: 56,
+      height: 56,
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(8),
+        color: appColor.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: appColor.withOpacity(0.3), width: 2),
       ),
       child: stats.icon != null
           ? ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
               child: Image.memory(
                 stats.icon!,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
-                  return Icon(
-                    Icons.apps,
-                    color: Colors.grey.shade600,
-                    size: 24,
-                  );
+                  return Icon(Icons.apps_rounded, color: appColor, size: 28);
                 },
               ),
             )
-          : Icon(
-              Icons.apps,
-              color: Colors.grey.shade600,
-              size: 24,
-            ),
+          : Icon(Icons.apps_rounded, color: appColor, size: 28),
     );
   }
 }

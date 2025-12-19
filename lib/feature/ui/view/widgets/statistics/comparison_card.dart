@@ -4,10 +4,12 @@ import '../../../../data/models/comparison_stats.dart';
 /// Card widget displaying comparison statistics between two periods
 class ComparisonCard extends StatelessWidget {
   final ComparisonStats stats;
+  final EdgeInsetsGeometry margin;
 
   const ComparisonCard({
     super.key,
     required this.stats,
+    this.margin = const EdgeInsets.all(16),
   });
 
   @override
@@ -17,7 +19,7 @@ class ComparisonCard extends StatelessWidget {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.all(16),
+      margin: margin,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),

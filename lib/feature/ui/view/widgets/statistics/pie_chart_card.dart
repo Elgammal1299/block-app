@@ -5,10 +5,12 @@ import '../../../../data/models/statistics_dashboard_data.dart' as dashboard;
 /// Card widget displaying pie chart for app usage distribution
 class PieChartCard extends StatefulWidget {
   final List<dashboard.PieChartData> data;
+  final EdgeInsetsGeometry margin;
 
   const PieChartCard({
     super.key,
     required this.data,
+    this.margin = const EdgeInsets.all(16),
   });
 
   @override
@@ -28,7 +30,7 @@ class _PieChartCardState extends State<PieChartCard> {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.all(16),
+      margin: widget.margin,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
@@ -47,7 +49,7 @@ class _PieChartCardState extends State<PieChartCard> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Usage Distribution',
+                  'توزيع استخدام التطبيقات',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -221,7 +223,7 @@ class _PieChartCardState extends State<PieChartCard> {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.all(16),
+      margin: widget.margin,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
@@ -237,14 +239,14 @@ class _PieChartCardState extends State<PieChartCard> {
             ),
             const SizedBox(height: 16),
             Text(
-              'No Data Available',
+              'لا توجد بيانات',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Usage distribution will appear here',
+              'توزيع استخدام التطبيقات هيظهر هنا',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.6),
               ),

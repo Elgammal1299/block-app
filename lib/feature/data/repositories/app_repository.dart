@@ -80,6 +80,64 @@ class AppRepository {
     return apps.fold<int>(0, (sum, app) => sum + app.blockAttempts);
   }
 
+  // Sync block attempts from native Android to Flutter
+  // Timestamp of last sync to avoid redundant syncs
+  static DateTime? _lastSyncTime;
+  static const Duration _syncCooldown = Duration(seconds: 5);
+
+  Future<void> syncBlockAttemptsFromNative({bool force = false}) async {
+    try {
+      // Check if we synced recently (within last 5 seconds) - avoid redundant syncs
+      if (!force && _lastSyncTime != null) {
+        final timeSinceLastSync = DateTime.now().difference(_lastSyncTime!);
+        if (timeSinceLastSync < _syncCooldown) {
+          // Too soon, skip sync
+          return;
+        }
+      }
+
+      // Get the latest blocked apps JSON from Android SharedPreferences
+      final nativeJson = await _platformService.getBlockedAppsJsonFromNative();
+      if (nativeJson != null && nativeJson.isNotEmpty && nativeJson != '[]') {
+        // Parse the JSON and update Flutter SharedPreferences
+        final List<dynamic> jsonList = jsonDecode(nativeJson);
+        final nativeApps = jsonList.map((json) => BlockedApp.fromJson(json)).toList();
+
+        // Get current apps from Flutter
+        final currentApps = await _prefsService.getBlockedApps();
+
+        bool hasChanges = false;
+
+        // Update block attempts for each app
+        for (final nativeApp in nativeApps) {
+          final index = currentApps.indexWhere(
+            (app) => app.packageName == nativeApp.packageName,
+          );
+          if (index != -1) {
+            // Update the block attempts if changed
+            if (currentApps[index].blockAttempts != nativeApp.blockAttempts) {
+              currentApps[index] = currentApps[index].copyWith(
+                blockAttempts: nativeApp.blockAttempts,
+              );
+              hasChanges = true;
+            }
+          }
+        }
+
+        // Only save if there were actual changes
+        if (hasChanges) {
+          await _prefsService.saveBlockedApps(currentApps);
+          print('Synced block attempts from native (${nativeApps.length} apps)');
+        }
+
+        // Update last sync timestamp
+        _lastSyncTime = DateTime.now();
+      }
+    } catch (e) {
+      print('Error syncing block attempts from native: $e');
+    }
+  }
+
   // Get usage statistics
   Future<Map<String, int>> getAppUsageStats(DateTime startTime, DateTime endTime) async {
     return await _platformService.getAppUsageStats(startTime, endTime);

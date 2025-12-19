@@ -39,6 +39,9 @@ class _HomeScreenState extends State<HomeScreen> {
       // Start monitoring service
       final platformService = PlatformChannelService();
       await platformService.startMonitoringService();
+
+      // Start usage tracking service for accurate statistics
+      await platformService.startUsageTrackingService();
     } catch (e) {
       print('Error initializing service: $e');
     }
@@ -78,38 +81,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(localizations.appName),
-        actions: [
-          // Language Toggle Button
-          BlocBuilder<LocaleCubit, LocaleState>(
-            bloc: getIt<LocaleCubit>(),
-            builder: (context, state) {
-              return IconButton(
-                icon: const Icon(Icons.language),
-                tooltip: localizations.changeLanguage,
-                onPressed: () {
-                  getIt<LocaleCubit>().toggleLocale();
-                },
-              );
-            },
-          ),
-          // Theme Toggle Button
-          BlocBuilder<ThemeCubit, ThemeState>(
-            bloc: getIt<ThemeCubit>(),
-            builder: (context, state) {
-              final isDarkMode = state is ThemeLoaded ? state.isDarkMode : false;
-              return IconButton(
-                icon: Icon(
-                  isDarkMode ? Icons.light_mode : Icons.dark_mode,
-                ),
-                tooltip: isDarkMode ? localizations.lightMode : localizations.darkMode,
-                onPressed: () {
-                  getIt<ThemeCubit>().toggleTheme();
-                },
-              );
-            },
-          ),
-        ],
       ),
+      drawer: _buildSettingsDrawer(context, localizations),
       body: RefreshIndicator(
         onRefresh: () async {
           await getIt<BlockedAppsCubit>().loadBlockedApps();
@@ -156,6 +129,83 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         icon: const Icon(Icons.block),
         label: const Text('Block Apps'),
+      ),
+    );
+  }
+
+  Widget _buildSettingsDrawer(BuildContext context, AppLocalizations localizations) {
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            DrawerHeader(
+              margin: EdgeInsets.zero,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    localizations.appName,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'الإعدادات السريعة',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            // Language
+            BlocBuilder<LocaleCubit, LocaleState>(
+              bloc: getIt<LocaleCubit>(),
+              builder: (context, state) {
+                final currentLocale =
+                    state is LocaleLoaded ? state.locale.languageCode : 'en';
+                final isArabic = currentLocale == 'ar';
+                return ListTile(
+                  leading: const Icon(Icons.language),
+                  title: const Text('اللغة'),
+                  subtitle: Text(isArabic ? 'العربية' : 'English'),
+                  onTap: () {
+                    getIt<LocaleCubit>().toggleLocale();
+                  },
+                );
+              },
+            ),
+            // Theme
+            BlocBuilder<ThemeCubit, ThemeState>(
+              bloc: getIt<ThemeCubit>(),
+              builder: (context, state) {
+                final isDarkMode = state is ThemeLoaded ? state.isDarkMode : false;
+                return SwitchListTile(
+                  secondary: const Icon(Icons.brightness_6),
+                  title: const Text('الوضع الليلي'),
+                  value: isDarkMode,
+                  onChanged: (_) {
+                    getIt<ThemeCubit>().toggleTheme();
+                  },
+                );
+              },
+            ),
+            const Divider(),
+            // Block screen style
+            ListTile(
+              leading: const Icon(Icons.phone_android),
+              title: const Text('شكل شاشة الحظر'),
+              subtitle: const Text('اختر الشكل الذي تريده عند حظر التطبيقات'),
+              onTap: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pushNamed(AppRoutes.blockScreenStyle);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

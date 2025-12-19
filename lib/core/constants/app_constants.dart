@@ -18,6 +18,7 @@ class AppConstants {
   static const String keyActiveFocusSession = 'active_focus_session';
   static const String keyFocusSessionHistory = 'focus_session_history';
   static const String keyPresetsInitialized = 'presets_initialized';
+  static const String keyBlockScreenStyle = 'block_screen_style';
 
   // Platform Channel Methods
   static const String methodGetInstalledApps = 'getInstalledApps';
@@ -34,12 +35,15 @@ class AppConstants {
       'requestAccessibilityPermission';
   static const String methodStartMonitoringService = 'startMonitoringService';
   static const String methodStopMonitoringService = 'stopMonitoringService';
+  static const String methodStartUsageTrackingService = 'startUsageTrackingService';
+  static const String methodStopUsageTrackingService = 'stopUsageTrackingService';
   static const String methodUpdateBlockedApps = 'updateBlockedApps';
   static const String methodUpdateSchedules = 'updateSchedules';
   static const String methodUpdateUsageLimits = 'updateUsageLimits';
   static const String methodGetAppUsageStats = 'getAppUsageStats';
   static const String methodStartFocusSession = 'startFocusSession';
   static const String methodEndFocusSession = 'endFocusSession';
+  static const String methodSetBlockScreenStyle = 'setBlockScreenStyle';
 
   // Callback Methods (Native -> Flutter)
   static const String callbackOnAppBlocked = 'onAppBlocked';

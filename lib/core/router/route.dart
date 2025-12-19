@@ -14,6 +14,7 @@ import 'package:block_app/feature/ui/view/screens/create_focus_list_screen.dart'
 import 'package:block_app/feature/ui/view/screens/active_session_screen.dart';
 import 'package:block_app/feature/ui/view/screens/focus_history_screen.dart';
 import 'package:block_app/feature/ui/view/screens/statistics_dashboard_screen.dart';
+import 'package:block_app/feature/ui/view/screens/block_screen_style_screen.dart';
 import 'package:block_app/feature/data/models/blocked_app.dart';
 import 'package:block_app/feature/data/models/focus_list.dart';
 
@@ -81,6 +82,10 @@ class AppRouter {
       // Statistics routes
       case AppRoutes.statisticsDashboard:
         return RouterTransitions.buildHorizontal(const StatisticsDashboardScreen());
+
+      // Settings routes
+      case AppRoutes.blockScreenStyle:
+        return RouterTransitions.buildHorizontal(const BlockScreenStyleScreen());
 
       default:
         return null;

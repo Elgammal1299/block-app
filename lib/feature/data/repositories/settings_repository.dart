@@ -83,6 +83,16 @@ class SettingsRepository {
     return await _prefsService.setUnlockChallengeType(type);
   }
 
+  // ========== Block Screen Style ==========
+
+  Future<String> getBlockScreenStyle() async {
+    return await _prefsService.getBlockScreenStyle();
+  }
+
+  Future<bool> setBlockScreenStyle(String style) async {
+    return await _prefsService.setBlockScreenStyle(style);
+  }
+
   // ========== PIN Protection ==========
 
   Future<String?> getSettingsPin() async {

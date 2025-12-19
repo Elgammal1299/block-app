@@ -9,8 +9,7 @@ class PlatformChannelService {
   factory PlatformChannelService() => _instance;
   PlatformChannelService._internal();
 
-  final MethodChannel _channel =
-      const MethodChannel(AppConstants.channelName);
+  final MethodChannel _channel = const MethodChannel(AppConstants.channelName);
 
   // Callback handlers
   Function(String packageName, int attempts)? onAppBlocked;
@@ -92,9 +91,7 @@ class PlatformChannelService {
 
   Future<void> requestOverlayPermission() async {
     try {
-      await _channel.invokeMethod(
-        AppConstants.methodRequestOverlayPermission,
-      );
+      await _channel.invokeMethod(AppConstants.methodRequestOverlayPermission);
     } on PlatformException catch (e) {
       print('Error requesting overlay permission: ${e.message}');
     }
@@ -126,9 +123,7 @@ class PlatformChannelService {
 
   Future<void> startMonitoringService() async {
     try {
-      await _channel.invokeMethod(
-        AppConstants.methodStartMonitoringService,
-      );
+      await _channel.invokeMethod(AppConstants.methodStartMonitoringService);
     } on PlatformException catch (e) {
       print('Error starting monitoring service: ${e.message}');
     }
@@ -136,11 +131,25 @@ class PlatformChannelService {
 
   Future<void> stopMonitoringService() async {
     try {
-      await _channel.invokeMethod(
-        AppConstants.methodStopMonitoringService,
-      );
+      await _channel.invokeMethod(AppConstants.methodStopMonitoringService);
     } on PlatformException catch (e) {
       print('Error stopping monitoring service: ${e.message}');
+    }
+  }
+
+  Future<void> startUsageTrackingService() async {
+    try {
+      await _channel.invokeMethod(AppConstants.methodStartUsageTrackingService);
+    } on PlatformException catch (e) {
+      print('Error starting usage tracking service: ${e.message}');
+    }
+  }
+
+  Future<void> stopUsageTrackingService() async {
+    try {
+      await _channel.invokeMethod(AppConstants.methodStopUsageTrackingService);
+    } on PlatformException catch (e) {
+      print('Error stopping usage tracking service: ${e.message}');
     }
   }
 
@@ -148,10 +157,9 @@ class PlatformChannelService {
 
   Future<void> updateBlockedApps(List<String> packageNames) async {
     try {
-      await _channel.invokeMethod(
-        AppConstants.methodUpdateBlockedApps,
-        {'packageNames': packageNames},
-      );
+      await _channel.invokeMethod(AppConstants.methodUpdateBlockedApps, {
+        'packageNames': packageNames,
+      });
     } on PlatformException catch (e) {
       print('Error updating blocked apps: ${e.message}');
     }
@@ -159,10 +167,9 @@ class PlatformChannelService {
 
   Future<void> updateBlockedAppsJson(String appsJson) async {
     try {
-      await _channel.invokeMethod(
-        'updateBlockedAppsJson',
-        {'appsJson': appsJson},
-      );
+      await _channel.invokeMethod('updateBlockedAppsJson', {
+        'appsJson': appsJson,
+      });
     } on PlatformException catch (e) {
       print('Error updating blocked apps JSON: ${e.message}');
     }
@@ -170,12 +177,12 @@ class PlatformChannelService {
 
   Future<void> updateSchedules(List<Schedule> schedules) async {
     try {
-      final List<Map<String, dynamic>> scheduleMaps =
-          schedules.map((s) => s.toJson()).toList();
-      await _channel.invokeMethod(
-        AppConstants.methodUpdateSchedules,
-        {'schedules': scheduleMaps},
-      );
+      final List<Map<String, dynamic>> scheduleMaps = schedules
+          .map((s) => s.toJson())
+          .toList();
+      await _channel.invokeMethod(AppConstants.methodUpdateSchedules, {
+        'schedules': scheduleMaps,
+      });
     } on PlatformException catch (e) {
       print('Error updating schedules: ${e.message}');
     }
@@ -185,10 +192,9 @@ class PlatformChannelService {
 
   Future<void> updateUsageLimitsJson(String limitsJson) async {
     try {
-      await _channel.invokeMethod(
-        AppConstants.methodUpdateUsageLimits,
-        {'limitsJson': limitsJson},
-      );
+      await _channel.invokeMethod(AppConstants.methodUpdateUsageLimits, {
+        'limitsJson': limitsJson,
+      });
     } on PlatformException catch (e) {
       print('Error updating usage limits: ${e.message}');
     }
@@ -201,13 +207,11 @@ class PlatformChannelService {
     DateTime endTime,
   ) async {
     try {
-      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
-        AppConstants.methodGetAppUsageStats,
-        {
-          'startTime': startTime.millisecondsSinceEpoch,
-          'endTime': endTime.millisecondsSinceEpoch,
-        },
-      );
+      final Map<dynamic, dynamic> result = await _channel
+          .invokeMethod(AppConstants.methodGetAppUsageStats, {
+            'startTime': startTime.millisecondsSinceEpoch,
+            'endTime': endTime.millisecondsSinceEpoch,
+          });
       // Convert dynamic map to Map<String, int>
       return result.map((key, value) => MapEntry(key.toString(), value as int));
     } on PlatformException catch (e) {
@@ -219,14 +223,127 @@ class PlatformChannelService {
   /// Get app name from package name
   Future<String?> getAppName(String packageName) async {
     try {
-      final String result = await _channel.invokeMethod(
-        'getAppName',
-        {'packageName': packageName},
-      );
+      final String result = await _channel.invokeMethod('getAppName', {
+        'packageName': packageName,
+      });
       return result;
     } on PlatformException catch (e) {
       print('Error getting app name: ${e.message}');
       return null;
+    }
+  }
+
+  /// Get hourly usage statistics for a time range
+  /// Returns a list of 24 hourly data points, each containing:
+  /// - hour: Hour of day (0-23)
+  /// - totalTimeInMillis: Total usage time in that hour
+  /// - appBreakdown: Map of package names to usage time
+  Future<List<Map<String, dynamic>>> getHourlyUsageStats(
+    DateTime startTime,
+    DateTime endTime,
+  ) async {
+    try {
+      final List<dynamic> result = await _channel
+          .invokeMethod('getHourlyUsageStats', {
+            'startTime': startTime.millisecondsSinceEpoch,
+            'endTime': endTime.millisecondsSinceEpoch,
+          });
+      return result.map((item) => Map<String, dynamic>.from(item)).toList();
+    } on PlatformException catch (e) {
+      print('Error getting hourly usage stats: ${e.message}');
+      return [];
+    }
+  }
+
+  /// Get today's usage from UsageTrackingService (real-time, more accurate)
+  /// This uses data that's updated every 10 seconds by the background service
+  /// Returns empty map if service data is stale or unavailable
+  Future<Map<String, int>> getTodayUsageFromTrackingService() async {
+    try {
+      final Map<dynamic, dynamic> result = await _channel
+          .invokeMethod('getTodayUsageFromTrackingService');
+
+      if (result.isEmpty) {
+        print('UsageTrackingService data is empty or stale');
+        return {};
+      }
+
+      // Convert dynamic map to Map<String, int>
+      return result.map((key, value) => MapEntry(key.toString(), value as int));
+    } on PlatformException catch (e) {
+      print('Error getting today usage from tracking service: ${e.message}');
+      return {};
+    }
+  }
+
+  /// Get usage for a specific date from UsageTrackingService storage
+  /// Date format: "YYYY-M-D" (e.g., "2025-1-15")
+  Future<Map<String, int>> getUsageForDateFromTracking(String date) async {
+    try {
+      final Map<dynamic, dynamic> result = await _channel
+          .invokeMethod('getUsageForDateFromTracking', {
+            'date': date,
+          });
+
+      // Convert dynamic map to Map<String, int>
+      return result.map((key, value) => MapEntry(key.toString(), value as int));
+    } on PlatformException catch (e) {
+      print('Error getting usage for date from tracking: ${e.message}');
+      return {};
+    }
+  }
+
+  /// Get list of dates that have pending snapshots to be saved to database
+  Future<List<String>> getPendingSnapshotDates() async {
+    try {
+      final List<dynamic> result = await _channel
+          .invokeMethod('getPendingSnapshotDates');
+
+      return result.map((date) => date.toString()).toList();
+    } on PlatformException catch (e) {
+      print('Error getting pending snapshot dates: ${e.message}');
+      return [];
+    }
+  }
+
+  /// Clear the list of pending snapshot dates after processing
+  Future<void> clearPendingSnapshotDates() async {
+    try {
+      await _channel.invokeMethod('clearPendingSnapshotDates');
+    } on PlatformException catch (e) {
+      print('Error clearing pending snapshot dates: ${e.message}');
+    }
+  }
+
+  /// Check if device has OEM restrictions that may affect tracking accuracy
+  Future<Map<String, dynamic>> checkOEMRestrictions() async {
+    try {
+      final Map<dynamic, dynamic> result = await _channel
+          .invokeMethod('checkOEMRestrictions');
+
+      return {
+        'hasRestrictions': result['hasRestrictions'] as bool,
+        'manufacturer': result['manufacturer'] as String,
+        'model': result['model'] as String,
+      };
+    } on PlatformException catch (e) {
+      print('Error checking OEM restrictions: ${e.message}');
+      return {
+        'hasRestrictions': false,
+        'manufacturer': 'unknown',
+        'model': 'unknown',
+      };
+    }
+  }
+
+  /// Clean stored usage data (remove our own app from all statistics)
+  Future<bool> cleanStoredUsageData() async {
+    try {
+      final bool result = await _channel.invokeMethod('cleanStoredUsageData');
+      return result;
+    } on PlatformException catch (e) {
+      print('Error cleaning stored usage data: ${e.message}');
+      return false;
     }
   }
 
@@ -237,13 +354,10 @@ class PlatformChannelService {
     required int durationMinutes,
   }) async {
     try {
-      await _channel.invokeMethod(
-        AppConstants.methodStartFocusSession,
-        {
-          'packageNames': packageNames,
-          'durationMinutes': durationMinutes,
-        },
-      );
+      await _channel.invokeMethod(AppConstants.methodStartFocusSession, {
+        'packageNames': packageNames,
+        'durationMinutes': durationMinutes,
+      });
     } on PlatformException catch (e) {
       print('Error starting focus session: ${e.message}');
     }
@@ -251,11 +365,41 @@ class PlatformChannelService {
 
   Future<void> endFocusSession() async {
     try {
-      await _channel.invokeMethod(
-        AppConstants.methodEndFocusSession,
-      );
+      await _channel.invokeMethod(AppConstants.methodEndFocusSession);
     } on PlatformException catch (e) {
       print('Error ending focus session: ${e.message}');
+    }
+  }
+
+  // ========== Block Screen Style ==========
+
+  Future<void> setBlockScreenStyle(String style) async {
+    // Implemented حاليًا على أندرويد فقط
+    const platform = MethodChannel(AppConstants.channelName);
+    try {
+      await platform.invokeMethod(AppConstants.methodSetBlockScreenStyle, {
+        'style': style,
+      });
+    } on PlatformException catch (e) {
+      print('Error setting block screen style: ${e.message}');
+    } on MissingPluginException catch (e) {
+      // تجاهل على المنصات اللي مفيهاش تنفيذ (iOS/Web)
+      print(
+        'Block screen style not implemented on this platform: ${e.message}',
+      );
+    }
+  }
+
+  // ========== Sync Block Attempts from Native ==========
+
+  /// Sync block attempts from Android SharedPreferences to Flutter
+  Future<String?> getBlockedAppsJsonFromNative() async {
+    try {
+      final String result = await _channel.invokeMethod('getBlockedAppsJson');
+      return result;
+    } on PlatformException catch (e) {
+      print('Error getting blocked apps JSON from native: ${e.message}');
+      return null;
     }
   }
 }

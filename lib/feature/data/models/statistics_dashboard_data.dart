@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'app_usage_stats.dart';
 import 'app_usage_limit.dart';
 import 'comparison_stats.dart';
+import 'hourly_usage_data.dart';
 
 /// Model representing data for a single pie chart section
 class PieChartData extends Equatable {
@@ -40,12 +41,12 @@ class PieChartData extends Equatable {
 
   @override
   List<Object?> get props => [
-        packageName,
-        appName,
-        timeInMillis,
-        percentage,
-        color,
-      ];
+    packageName,
+    appName,
+    timeInMillis,
+    percentage,
+    color,
+  ];
 }
 
 /// Comprehensive model containing all statistics dashboard data
@@ -55,6 +56,8 @@ class StatisticsDashboardData extends Equatable {
   final int totalBlockAttempts;
   final Map<String, AppUsageLimit> usageLimitsMap;
   final List<PieChartData> pieChartData;
+  final List<HourlyUsageData> hourlyUsageData;
+  final int totalAppsUsedToday;
 
   const StatisticsDashboardData({
     required this.comparisonStats,
@@ -62,6 +65,8 @@ class StatisticsDashboardData extends Equatable {
     required this.totalBlockAttempts,
     required this.usageLimitsMap,
     required this.pieChartData,
+    required this.hourlyUsageData,
+    required this.totalAppsUsedToday,
   });
 
   /// Get usage limit for a specific app
@@ -84,12 +89,14 @@ class StatisticsDashboardData extends Equatable {
 
   @override
   List<Object?> get props => [
-        comparisonStats,
-        todayTopApps,
-        totalBlockAttempts,
-        usageLimitsMap,
-        pieChartData,
-      ];
+    comparisonStats,
+    todayTopApps,
+    totalBlockAttempts,
+    usageLimitsMap,
+    pieChartData,
+    hourlyUsageData,
+    totalAppsUsedToday,
+  ];
 }
 
 /// Predefined color palette for pie charts

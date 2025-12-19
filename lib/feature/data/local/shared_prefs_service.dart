@@ -191,6 +191,20 @@ class SharedPrefsService {
         false;
   }
 
+  // ========== Block Screen Style ==========
+
+  Future<String> getBlockScreenStyle() async {
+    // Default style is 'classic'
+    return _preferences?.getString(AppConstants.keyBlockScreenStyle) ??
+        'classic';
+  }
+
+  Future<bool> setBlockScreenStyle(String style) async {
+    return await _preferences?.setString(
+            AppConstants.keyBlockScreenStyle, style) ??
+        false;
+  }
+
   Future<String?> getSettingsPin() async {
     return _preferences?.getString(AppConstants.keySettingsPin);
   }

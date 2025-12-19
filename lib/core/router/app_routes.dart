@@ -23,4 +23,7 @@ class AppRoutes {
 
   // Statistics routes
   static const statisticsDashboard = '/statistics-dashboard';
+
+  // Settings routes
+  static const blockScreenStyle = '/block-screen-style';
 }

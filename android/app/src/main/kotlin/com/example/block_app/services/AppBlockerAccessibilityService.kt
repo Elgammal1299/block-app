@@ -62,8 +62,8 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             if (isInActiveFocusSession(packageName)) {
                 Log.d(TAG, "Blocking app (Focus Mode): $packageName")
                 incrementBlockAttempts(packageName)
+                // Show full-screen block overlay instead of returning to home screen
                 launchBlockOverlay(packageName)
-                performGlobalAction(GLOBAL_ACTION_HOME)
                 return
             }
 
@@ -71,8 +71,8 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             if (hasReachedUsageLimit(packageName)) {
                 Log.d(TAG, "Blocking app (Usage Limit): $packageName")
                 incrementBlockAttempts(packageName)
+                // Show full-screen block overlay instead of returning to home screen
                 launchBlockOverlay(packageName, "usage_limit_reached")
-                performGlobalAction(GLOBAL_ACTION_HOME)
                 return
             }
 
@@ -83,11 +83,8 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 // Increment block attempts
                 incrementBlockAttempts(packageName)
 
-                // Launch block overlay activity
+                // Launch block overlay activity and keep user on this screen
                 launchBlockOverlay(packageName)
-
-                // Force go back to home
-                performGlobalAction(GLOBAL_ACTION_HOME)
             }
         }
     }
@@ -337,8 +334,34 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
     private fun incrementBlockAttempts(packageName: String) {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val currentAttempts = prefs.getInt("attempts_$packageName", 0)
-        prefs.edit().putInt("attempts_$packageName", currentAttempts + 1).apply()
+        val blockedAppsJson = prefs.getString(KEY_BLOCKED_APPS, null) ?: return
+
+        try {
+            val blockedAppsArray = JSONArray(blockedAppsJson)
+            var found = false
+
+            // Find and update the blocked app's attempts
+            for (i in 0 until blockedAppsArray.length()) {
+                val appObj = blockedAppsArray.getJSONObject(i)
+                if (appObj.getString("packageName") == packageName) {
+                    val currentAttempts = appObj.optInt("blockAttempts", 0)
+                    appObj.put("blockAttempts", currentAttempts + 1)
+                    found = true
+                    Log.d(TAG, "Incremented block attempts for $packageName: ${currentAttempts + 1}")
+                    break
+                }
+            }
+
+            if (found) {
+                // Save updated JSON back to preferences
+                prefs.edit().putString(KEY_BLOCKED_APPS, blockedAppsArray.toString()).apply()
+                Log.d(TAG, "Updated blocked apps JSON with new attempt count")
+            } else {
+                Log.w(TAG, "Package $packageName not found in blocked apps list")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error incrementing block attempts: ${e.message}", e)
+        }
     }
 
     private fun launchBlockOverlay(packageName: String, blockReason: String? = null) {

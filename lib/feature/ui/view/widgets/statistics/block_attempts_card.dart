@@ -3,10 +3,14 @@ import 'package:flutter/material.dart';
 /// Card widget displaying total block attempts
 class BlockAttemptsCard extends StatelessWidget {
   final int totalAttempts;
+  final EdgeInsetsGeometry margin;
+  final String? periodLabel; // Optional label for the period
 
   const BlockAttemptsCard({
     super.key,
     required this.totalAttempts,
+    this.margin = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    this.periodLabel,
   });
 
   @override
@@ -15,7 +19,7 @@ class BlockAttemptsCard extends StatelessWidget {
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: margin,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
@@ -55,11 +59,13 @@ class BlockAttemptsCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Block Attempts',
+                    periodLabel ?? 'محاولات الدخول للمحظور',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: Colors.white.withOpacity(0.9),
                       fontWeight: FontWeight.w500,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(

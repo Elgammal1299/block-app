@@ -72,6 +72,23 @@ class AppMonitorService : Service() {
         serviceScope.cancel()
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.d(TAG, "App task removed - scheduling service restart")
+
+        // Restart the service automatically
+        val restartServiceIntent = Intent(applicationContext, AppMonitorService::class.java)
+        restartServiceIntent.setPackage(packageName)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            applicationContext.startForegroundService(restartServiceIntent)
+        } else {
+            applicationContext.startService(restartServiceIntent)
+        }
+
+        Log.d(TAG, "Service restart scheduled")
+    }
+
     private fun startMonitoring() {
         monitoringJob?.cancel()
 
@@ -213,7 +230,7 @@ class AppMonitorService : Service() {
 
                     Log.d(TAG, "Checking current app: $currentPackage - Used: $usedMinutes/$dailyLimitMinutes minutes")
 
-                    // If limit is reached, show block overlay and go home
+                    // If limit is reached, show block overlay
                     if (usedMinutes >= dailyLimitMinutes) {
                         Log.d(TAG, "⚠️ LIMIT REACHED! Showing block screen for $currentPackage - $usedMinutes/$dailyLimitMinutes minutes")
 
@@ -226,13 +243,6 @@ class AppMonitorService : Service() {
                             putExtra("block_reason", "usage_limit_reached")
                         }
                         startActivity(overlayIntent)
-
-                        // Force the user to go to home screen to close the blocked app
-                        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-                            addCategory(Intent.CATEGORY_HOME)
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        }
-                        startActivity(homeIntent)
                     }
 
                     // Only check the first matching limit

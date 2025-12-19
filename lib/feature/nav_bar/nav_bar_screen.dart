@@ -49,6 +49,7 @@ class _NabBarScreenState extends State<NabBarScreen> {
     final primaryColor = theme.colorScheme.primary;
 
     return Scaffold(
+      extendBody: true,
       body: PageView(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
@@ -58,7 +59,10 @@ class _NabBarScreenState extends State<NabBarScreen> {
           _controller.index = index;
         },
       ),
+
       bottomNavigationBar: AnimatedNotchBottomBar(
+        shadowElevation: 0,
+        elevation: 0,
         notchBottomBarController: _controller,
         color: theme.bottomNavigationBarTheme.backgroundColor ?? theme.colorScheme.surface,
         notchColor: theme.bottomNavigationBarTheme.backgroundColor ?? theme.colorScheme.surface,

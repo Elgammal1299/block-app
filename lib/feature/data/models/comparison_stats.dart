@@ -5,6 +5,7 @@ import 'app_usage_stats.dart';
 enum ComparisonMode {
   todayVsYesterday,
   thisWeekVsLastWeek,
+  thisMonthVsLastMonth,
   peakDay,
 }
 
@@ -16,6 +17,8 @@ extension ComparisonModeExtension on ComparisonMode {
         return 'Today vs Yesterday';
       case ComparisonMode.thisWeekVsLastWeek:
         return 'Week Comparison';
+      case ComparisonMode.thisMonthVsLastMonth:
+        return 'Month Comparison';
       case ComparisonMode.peakDay:
         return 'Peak Day';
     }
@@ -27,8 +30,23 @@ extension ComparisonModeExtension on ComparisonMode {
         return 'Daily';
       case ComparisonMode.thisWeekVsLastWeek:
         return 'Weekly';
+      case ComparisonMode.thisMonthVsLastMonth:
+        return 'Monthly';
       case ComparisonMode.peakDay:
         return 'Peak';
+    }
+  }
+
+  String get description {
+    switch (this) {
+      case ComparisonMode.todayVsYesterday:
+        return 'مقارنة استخدام اليوم بالأمس';
+      case ComparisonMode.thisWeekVsLastWeek:
+        return 'مقارنة هذا الأسبوع بالأسبوع الماضي';
+      case ComparisonMode.thisMonthVsLastMonth:
+        return 'مقارنة هذا الشهر بالشهر الماضي';
+      case ComparisonMode.peakDay:
+        return 'مقارنة مع أعلى يوم استخدام';
     }
   }
 }
@@ -176,6 +194,8 @@ class ComparisonStats extends Equatable {
         return 'Today vs Yesterday';
       case ComparisonMode.thisWeekVsLastWeek:
         return 'This Week vs Last Week';
+      case ComparisonMode.thisMonthVsLastMonth:
+        return 'This Month vs Last Month';
       case ComparisonMode.peakDay:
         return 'Today vs Peak Day';
     }

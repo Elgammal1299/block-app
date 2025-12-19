@@ -7,11 +7,13 @@ import 'app_usage_item.dart';
 class TopAppsListCard extends StatelessWidget {
   final List<AppUsageStats> topApps;
   final Map<String, AppUsageLimit> usageLimitsMap;
+  final EdgeInsetsGeometry margin;
 
   const TopAppsListCard({
     super.key,
     required this.topApps,
     required this.usageLimitsMap,
+    this.margin = const EdgeInsets.all(16),
   });
 
   @override
@@ -22,19 +24,21 @@ class TopAppsListCard extends StatelessWidget {
       return _buildEmptyState(context);
     }
 
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
+    // Calculate total usage time for percentage calculation
+    final totalUsageTime = topApps.fold<int>(
+      0,
+      (sum, app) => sum + app.totalTimeInMillis,
+    );
+
+    return Container(
+      margin: margin,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
               children: [
                 Icon(
                   Icons.star_rounded,
@@ -43,29 +47,29 @@ class TopAppsListCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Top Apps Today',
+                  'أكثر التطبيقات استخدامًا',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+          ),
 
-            // App list
-            ...topApps.asMap().entries.map((entry) {
-              final index = entry.key;
-              final stats = entry.value;
-              final limit = usageLimitsMap[stats.packageName];
+          // App list
+          ...topApps.asMap().entries.map((entry) {
+            final index = entry.key;
+            final stats = entry.value;
+            final limit = usageLimitsMap[stats.packageName];
 
-              return AppUsageItem(
-                stats: stats,
-                usageLimit: limit,
-                index: index,
-              );
-            }),
-          ],
-        ),
+            return AppUsageItem(
+              stats: stats,
+              usageLimit: limit,
+              index: index,
+              totalUsageTime: totalUsageTime,
+            );
+          }),
+        ],
       ),
     );
   }
@@ -73,39 +77,37 @@ class TopAppsListCard extends StatelessWidget {
   Widget _buildEmptyState(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+    return Container(
+      margin: margin,
+      padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(24),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.insights_outlined,
-              size: 64,
-              color: theme.colorScheme.outline,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.insights_outlined,
+            size: 64,
+            color: theme.colorScheme.outline,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'لا توجد بيانات لاستخدام التطبيقات',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 16),
-            Text(
-              'No App Usage Data',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'ابدأ استخدام التطبيقات علشان تشوف الإحصائيات هنا',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Start using apps to see statistics here',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

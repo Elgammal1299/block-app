@@ -91,7 +91,10 @@ Future<void> setupGetIt() async {
   );
 
   getIt.registerSingleton<StatisticsCubit>(
-    StatisticsCubit(getIt<StatisticsRepository>()),
+    StatisticsCubit(
+      getIt<StatisticsRepository>(),
+      getIt<PlatformChannelService>(),
+    ),
   );
 
   getIt.registerSingleton<LocaleCubit>(

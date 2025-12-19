@@ -29,6 +29,11 @@ void main() async {
   final hasAccessibility = await platformService.checkAccessibilityPermission();
   final allPermissionsGranted = hasUsageStats && hasOverlay && hasAccessibility;
 
+  // Start services automatically if permissions are granted
+  if (allPermissionsGranted) {
+    _startServicesInBackground();
+  }
+
   runApp(MyApp(
     initialRoute: allPermissionsGranted ? AppRoutes.home : AppRoutes.permissions,
   ));
@@ -41,6 +46,22 @@ Future<void> _preloadApps() async {
     await appListCubit.loadInstalledApps();
   } catch (e) {
     // Silently fail - apps will load when needed
+  }
+}
+
+/// Start monitoring and tracking services in background
+Future<void> _startServicesInBackground() async {
+  try {
+    final platformService = getIt<PlatformChannelService>();
+
+    // Start both services
+    await platformService.startMonitoringService();
+    await platformService.startUsageTrackingService();
+
+    print('Services started automatically in background');
+  } catch (e) {
+    print('Error starting services in background: $e');
+    // Silently fail - services will start when user opens home screen
   }
 }
 

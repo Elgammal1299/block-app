@@ -23,6 +23,7 @@ class BlockOverlayActivity : Activity() {
     private lateinit var blockedPackage: String
     private lateinit var appInfoUtil: AppInfoUtil
     private var blockReason: String? = null
+    private var blockScreenStyle: String = "classic"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,6 +47,10 @@ class BlockOverlayActivity : Activity() {
         blockedPackage = intent.getStringExtra("blocked_package") ?: ""
         blockReason = intent.getStringExtra("block_reason")
 
+        // Read selected block screen style from shared preferences
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        blockScreenStyle = prefs.getString("block_screen_style", "classic") ?: "classic"
+
         setupUI()
     }
 
@@ -59,17 +64,45 @@ class BlockOverlayActivity : Activity() {
         // Set app name
         val appName = appInfoUtil.getAppName(blockedPackage)
 
-        // Different messages based on block reason
-        if (blockReason == "usage_limit_reached") {
-            titleText.text = "Daily Limit Reached!"
-            messageText.text = "You've used your daily limit for \"$appName\". Come back tomorrow!"
-        } else {
-            titleText.text = "\"$appName\" is Blocked"
-            messageText.text = "This app is blocked during your focus time."
+        // Configure UI based on selected style and block reason
+        when (blockScreenStyle) {
+            "minimal" -> {
+                // Minimal style: short message, no motivational quote, no unlock button
+                if (blockReason == "usage_limit_reached") {
+                    titleText.text = "تم استهلاك الحد اليومي"
+                    messageText.text = "لقد استخدمت الحد اليومي لتطبيق \"$appName\". جرّب غدًا مرة أخرى."
+                } else {
+                    titleText.text = "التطبيق \"$appName\" محظور الآن"
+                    messageText.text = "هذا التطبيق محظور في وقت التركيز."
+                }
+                motivationalText.visibility = View.GONE
+                unlockButton.visibility = View.GONE
+            }
+            "hardcore" -> {
+                // Hardcore style: strong message + motivational quote, no unlock button
+                if (blockReason == "usage_limit_reached") {
+                    titleText.text = "كفاية كده!"
+                    messageText.text = "لقد تجاوزت وقتك المسموح لتطبيق \"$appName\" اليوم. ركّز في أهدافك الآن."
+                } else {
+                    titleText.text = "لا تضعف الآن!"
+                    messageText.text = "\"$appName\" محظور لأن وقتك أهم من أي إلهاء."
+                }
+                motivationalText.text = getRandomMotivationalQuote()
+                unlockButton.visibility = View.GONE
+            }
+            else -> {
+                // Classic style (default): original behavior with unlock and quote
+                if (blockReason == "usage_limit_reached") {
+                    titleText.text = "Daily Limit Reached!"
+                    messageText.text = "You've used your daily limit for \"$appName\". Come back tomorrow!"
+                } else {
+                    titleText.text = "\"$appName\" is Blocked"
+                    messageText.text = "This app is blocked during your focus time."
+                }
+                motivationalText.text = getRandomMotivationalQuote()
+                unlockButton.visibility = View.VISIBLE
+            }
         }
-
-        // Set random motivational quote
-        motivationalText.text = getRandomMotivationalQuote()
 
         // Unlock button
         unlockButton.setOnClickListener {
