@@ -10,9 +10,19 @@ import '../../view_model/theme_cubit/theme_cubit.dart';
 import '../../view_model/theme_cubit/theme_state.dart';
 import '../../view_model/locale_cubit/locale_cubit.dart';
 import '../../view_model/locale_cubit/locale_state.dart';
+import '../../view_model/daily_goal_cubit/daily_goal_cubit.dart';
+import '../../view_model/gamification_cubit/gamification_cubit.dart';
+import '../../view_model/suggestions_cubit/suggestions_cubit.dart';
+import '../../view_model/focus_session_cubit/focus_session_cubit.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/services/platform_channel_service.dart';
 import '../../../../core/router/app_routes.dart';
+import '../widgets/home/simple_daily_goal_card.dart';
+import '../widgets/home/quick_actions_section.dart';
+import '../widgets/home/focus_modes_grid.dart';
+import '../widgets/home/achievements_banner.dart';
+import '../widgets/home/smart_suggestion_card.dart';
+import '../widgets/home/active_schedule_preview.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,7 +38,20 @@ class _HomeScreenState extends State<HomeScreen> {
     // Start monitoring service and sync data automatically
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeService();
+      _loadData();
     });
+  }
+
+  Future<void> _loadData() async {
+    try {
+      await Future.wait([
+        getIt<DailyGoalCubit>().loadDailyGoal(),
+        getIt<GamificationCubit>().loadUserProgress(),
+        getIt<SmartSuggestionsCubit>().generateSuggestions(),
+      ]);
+    } catch (e) {
+      print('Error loading home screen data: $e');
+    }
   }
 
   Future<void> _initializeService() async {
@@ -37,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _syncDataToNative();
 
       // Start monitoring service
-      final platformService = PlatformChannelService();
+      final platformService = getIt<PlatformChannelService>();
       await platformService.startMonitoringService();
 
       // Start usage tracking service for accurate statistics
@@ -52,6 +75,14 @@ class _HomeScreenState extends State<HomeScreen> {
       final scheduleCubit = getIt<ScheduleCubit>();
       final blockedAppsCubit = getIt<BlockedAppsCubit>();
       final platformService = getIt<PlatformChannelService>();
+
+      // Ensure data is loaded at least once before syncing
+      if (scheduleCubit.state is ScheduleInitial) {
+        await scheduleCubit.loadSchedules();
+      }
+      if (blockedAppsCubit.state is BlockedAppsInitial) {
+        await blockedAppsCubit.loadBlockedApps();
+      }
 
       // Sync schedules
       final scheduleState = scheduleCubit.state;
@@ -78,58 +109,386 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(localizations.appName),
-      ),
-      drawer: _buildSettingsDrawer(context, localizations),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await getIt<BlockedAppsCubit>().loadBlockedApps();
-          await getIt<ScheduleCubit>().loadSchedules();
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Service Status Card
-              _buildServiceStatusCard(),
-              const SizedBox(height: 16),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => getIt<DailyGoalCubit>(),
+        ),
+        BlocProvider(
+          create: (_) => getIt<GamificationCubit>(),
+        ),
+        BlocProvider(
+          create: (_) => getIt<SmartSuggestionsCubit>(),
+        ),
+        BlocProvider.value(
+          value: getIt<FocusSessionCubit>(),
+        ),
+        BlocProvider.value(
+          value: getIt<ScheduleCubit>(),
+        ),
+      ],
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(localizations.appName),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () {
+                Scaffold.of(context).openEndDrawer();
+              },
+            ),
+          ],
+        ),
+        endDrawer: _buildSettingsDrawer(context, localizations),
+        body: RefreshIndicator(
+          onRefresh: _refreshData,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Quick Block Section
+                _buildQuickBlockSection(context),
+                const SizedBox(height: 24),
 
-              // Today's Stats Card
-              BlocBuilder<BlockedAppsCubit, BlockedAppsState>(
-                bloc: getIt<BlockedAppsCubit>(),
-                builder: (context, blockedAppsState) {
-                  return BlocBuilder<ScheduleCubit, ScheduleState>(
-                    bloc: getIt<ScheduleCubit>(),
-                    builder: (context, scheduleState) {
-                      return _buildTodayStatsCard(blockedAppsState, scheduleState);
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
+                // 2. Pomodoro Section
+                _buildPomodoroSection(context),
+                const SizedBox(height: 24),
 
-              // Quick Actions
-              const Text(
-                'Quick Actions',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              _buildQuickActions(context),
-            ],
+                // 3. Quick Modes Section
+                _buildSectionHeader(context, 'الأوضاع السريعة', Icons.flash_on),
+                const SizedBox(height: 12),
+                const FocusModesGrid(),
+                const SizedBox(height: 20),
+
+                // 4. Daily Goal Card
+                const SimpleDailyGoalCard(),
+                const SizedBox(height: 16),
+
+                // 5. Smart Suggestion
+                const SmartSuggestionCard(),
+                const SizedBox(height: 16),
+
+                // 6. Achievements
+                _buildSectionHeader(context, 'الإنجازات', Icons.emoji_events),
+                const SizedBox(height: 12),
+                const AchievementsBanner(),
+                const SizedBox(height: 16),
+
+                // 7. Active Schedule Preview
+                const ActiveSchedulePreview(),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(context).pushNamed('/app-selection');
-        },
-        icon: const Icon(Icons.block),
-        label: const Text('Block Apps'),
+    );
+  }
+
+  Future<void> _refreshData() async {
+    await Future.wait([
+      getIt<DailyGoalCubit>().loadDailyGoal(),
+      getIt<GamificationCubit>().loadUserProgress(),
+      getIt<SmartSuggestionsCubit>().generateSuggestions(),
+      getIt<BlockedAppsCubit>().loadBlockedApps(),
+      getIt<ScheduleCubit>().loadSchedules(),
+    ]);
+  }
+
+  Widget _buildQuickBlockSection(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.blue[400]!,
+            Colors.blue[600]!,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.flash_on,
+                color: Colors.white,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'الحظر السريع',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'ابدأ الحظر فورا بضغطة واحدة.',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed(AppRoutes.quickBlockSettings);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.blue[600],
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 2,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.play_arrow, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'هيا نبدأ',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(
+                Icons.timer,
+                color: Colors.white.withOpacity(0.8),
+                size: 16,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'المؤقت & طريقة البومودورو',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 12,
+                ),
+              ),
+              const Spacer(),
+              Icon(
+                Icons.diamond,
+                color: Colors.white.withOpacity(0.8),
+                size: 16,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPomodoroSection(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: theme.dividerColor.withOpacity(0.1),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.timer,
+                  color: Colors.red[600],
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'البرومودورو',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              Icon(
+                Icons.diamond,
+                color: Colors.grey[400],
+                size: 16,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'تقنية إدارة الوقت لتحسين التركيز والإنتاجية',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildPomodoroButton(
+                  context,
+                  '25 دقيقة',
+                  'جلسة قياسية',
+                  Icons.play_arrow,
+                  Colors.green,
+                  () => _startPomodoroSession(context, 25),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildPomodoroButton(
+                  context,
+                  '50 دقيقة',
+                  'جلسة طويلة',
+                  Icons.play_arrow,
+                  Colors.orange,
+                  () => _startPomodoroSession(context, 50),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPomodoroButton(
+    BuildContext context,
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    final theme = Theme.of(context);
+    
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: color.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: color,
+              size: 24,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: color,
+                fontSize: 14,
+              ),
+            ),
+            Text(
+              subtitle,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.grey[600],
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _startPomodoroSession(BuildContext context, int minutes) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('بدأت جلسة البومودورو لمدة $minutes دقيقة'),
+        duration: const Duration(seconds: 2),
+        action: SnackBarAction(
+          label: 'إلغاء',
+          onPressed: () {
+            // TODO: Cancel pomodoro session
+          },
+        ),
+      ),
+    );
+    
+    // TODO: Start actual pomodoro session
+    // This would integrate with FocusSessionCubit
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 20,
+          color: theme.colorScheme.primary,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 
@@ -205,242 +564,6 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildServiceStatusCard() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                color: Colors.green,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Service Running',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'App monitoring is active',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                // TODO: Navigate to Permissions Screen
-              },
-              child: const Text('Settings'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTodayStatsCard(
-    BlockedAppsState blockedAppsState,
-    ScheduleState scheduleState,
-  ) {
-    int totalBlockedApps = 0;
-    int totalBlockAttempts = 0;
-    int enabledSchedulesCount = 0;
-
-    if (blockedAppsState is BlockedAppsLoaded) {
-      totalBlockedApps = blockedAppsState.blockedApps.length;
-      totalBlockAttempts = blockedAppsState.blockedApps
-          .fold(0, (sum, app) => sum + app.blockAttempts);
-    }
-
-    if (scheduleState is ScheduleLoaded) {
-      enabledSchedulesCount = scheduleState.schedules
-          .where((schedule) => schedule.isEnabled)
-          .length;
-    }
-
-    return Card(
-      child: InkWell(
-        onTap: totalBlockedApps > 0
-            ? () {
-                Navigator.of(context).pushNamed(AppRoutes.blockedAppsList);
-              }
-            : null,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Today\'s Summary',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  if (totalBlockedApps > 0)
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      size: 16,
-                      color: Colors.grey[400],
-                    ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatItem(
-                      'Blocked Apps',
-                      totalBlockedApps.toString(),
-                      Icons.block,
-                      Colors.red,
-                    ),
-                  ),
-                  Expanded(
-                    child: _buildStatItem(
-                      'Active Schedules',
-                      enabledSchedulesCount.toString(),
-                      Icons.schedule,
-                      Colors.blue,
-                    ),
-                  ),
-                  Expanded(
-                    child: _buildStatItem(
-                      'Block Attempts',
-                      totalBlockAttempts.toString(),
-                      Icons.warning,
-                      Colors.orange,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItem(
-      String label, String value, IconData icon, Color color) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 32),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickActions(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.5,
-      children: [
-        _buildActionCard(
-          'Block Apps',
-          Icons.block,
-          Colors.red,
-          () {
-            Navigator.of(context).pushNamed('/app-selection');
-          },
-        ),
-        _buildActionCard(
-          'Block List',
-          Icons.block_flipped,
-          Colors.red,
-          () {
-            Navigator.of(context).pushNamed(AppRoutes.blockedAppsList);
-          },  
-        ),
-        _buildActionCard(
-          'Usage Limits',
-          Icons.timer_outlined,
-          Colors.orange,
-          () {
-            Navigator.of(context).pushNamed(AppRoutes.usageLimitSelection);
-          },
-        ),
-        _buildActionCard(
-          'Schedules',
-          Icons.calendar_today,
-          Colors.green,
-          () {
-            Navigator.of(context).pushNamed('/schedules');
-          },
-        ),
-        _buildActionCard(
-          'Focus Mode',
-          Icons.self_improvement,
-          Colors.blue,
-          () {
-            Navigator.pushNamed(context, AppRoutes.focusLists);
-          },
-        ),
-        _buildActionCard(
-          'Statistics',
-          Icons.bar_chart,
-          Colors.purple,
-          () {
-            Navigator.of(context).pushNamed(AppRoutes.statisticsDashboard);
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionCard(
-      String title, IconData icon, Color color, VoidCallback onTap) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 36, color: color),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
         ),
       ),
     );

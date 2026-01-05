@@ -3,6 +3,7 @@ import '../../../data/models/app_usage_stats.dart';
 import '../../../data/models/comparison_stats.dart';
 import '../../../data/models/statistics_dashboard_data.dart';
 import '../../../data/models/hourly_usage_data.dart';
+import '../../../data/models/statistics_model.dart';
 
 /// Base state for statistics
 abstract class StatisticsState extends Equatable {
@@ -66,4 +67,14 @@ class StatisticsError extends StatisticsState {
 
   @override
   List<Object> get props => [message];
+}
+
+/// Loaded state with simplified statistics for home screen
+class StatisticsLoaded extends StatisticsState {
+  final StatisticsModel stats;
+
+  const StatisticsLoaded(this.stats);
+
+  @override
+  List<Object> get props => [stats];
 }

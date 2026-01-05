@@ -5,6 +5,10 @@ class AppRoutes {
   static const permissions = '/permissions';
   static const home = '/home';
 
+  // Quick block routes
+  static const quickBlockSettings = '/quick-block-settings';
+  static const appSelectionForQuickBlock = '/app-selection-quick-block';
+
   // App management routes
   static const appSelection = '/app-selection';
   static const appScheduleSelection = '/app-schedule-selection';

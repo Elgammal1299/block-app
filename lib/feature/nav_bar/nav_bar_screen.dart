@@ -70,22 +70,22 @@ class _NabBarScreenState extends State<NabBarScreen> {
           BottomBarItem(
             inActiveItem: Icon(Icons.home_rounded, color: inactiveColor),
             activeItem: Icon(Icons.home_rounded, color: primaryColor),
-            itemLabel: 'Home',
+            itemLabel: 'الرئيسية',
           ),
           BottomBarItem(
             inActiveItem: Icon(Icons.block, color: inactiveColor),
             activeItem: Icon(Icons.block, color: Colors.red.shade400),
-            itemLabel: 'Control',
+            itemLabel: 'التحكم',
           ),
           BottomBarItem(
             inActiveItem: Icon(Icons.self_improvement, color: inactiveColor),
             activeItem: Icon(Icons.self_improvement, color: primaryColor),
-            itemLabel: 'Focus',
+            itemLabel: 'التركيز',
           ),
           BottomBarItem(
             inActiveItem: Icon(Icons.bar_chart, color: inactiveColor),
             activeItem: Icon(Icons.bar_chart, color: Colors.purple.shade400),
-            itemLabel: 'Stats',
+            itemLabel: 'الإحصائيات',
           ),
         ],
         onTap: (index) {

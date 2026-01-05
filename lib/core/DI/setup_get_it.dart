@@ -6,6 +6,9 @@ import 'package:block_app/feature/data/repositories/app_repository.dart';
 import 'package:block_app/feature/data/repositories/settings_repository.dart';
 import 'package:block_app/feature/data/repositories/focus_repository.dart';
 import 'package:block_app/feature/data/repositories/statistics_repository.dart';
+import 'package:block_app/feature/data/repositories/daily_goal_repository.dart';
+import 'package:block_app/feature/data/repositories/gamification_repository.dart';
+import 'package:block_app/feature/data/repositories/suggestions_repository.dart';
 import 'package:block_app/feature/ui/view_model/theme_cubit/theme_cubit.dart';
 import 'package:block_app/feature/ui/view_model/blocked_apps_cubit/blocked_apps_cubit.dart';
 import 'package:block_app/feature/ui/view_model/app_list_cubit/app_list_cubit.dart';
@@ -15,6 +18,9 @@ import 'package:block_app/feature/ui/view_model/locale_cubit/locale_cubit.dart';
 import 'package:block_app/feature/ui/view_model/focus_list_cubit/focus_list_cubit.dart';
 import 'package:block_app/feature/ui/view_model/focus_session_cubit/focus_session_cubit.dart';
 import 'package:block_app/feature/ui/view_model/usage_limit_cubit/usage_limit_cubit.dart';
+import 'package:block_app/feature/ui/view_model/daily_goal_cubit/daily_goal_cubit.dart';
+import 'package:block_app/feature/ui/view_model/gamification_cubit/gamification_cubit.dart';
+import 'package:block_app/feature/ui/view_model/suggestions_cubit/suggestions_cubit.dart';
 
 /// Global GetIt instance for dependency injection
 final getIt = GetIt.instance;
@@ -70,6 +76,25 @@ Future<void> setupGetIt() async {
     ),
   );
 
+  // Daily Goal Repository
+  getIt.registerSingleton<DailyGoalRepository>(
+    DailyGoalRepository(getIt<SharedPrefsService>()),
+  );
+
+  // Gamification Repository
+  getIt.registerSingleton<GamificationRepository>(
+    GamificationRepository(getIt<SharedPrefsService>()),
+  );
+
+  // Suggestions Repository
+  getIt.registerSingleton<SuggestionsRepository>(
+    SuggestionsRepository(
+      prefsService: getIt<SharedPrefsService>(),
+      gamificationRepo: getIt<GamificationRepository>(),
+      dailyGoalRepo: getIt<DailyGoalRepository>(),
+    ),
+  );
+
   // ==================== Cubits - Singleton ====================
   // All Cubits are Singletons to maintain consistent state across screens
   // This is required when using bloc parameter with BlocBuilder
@@ -114,5 +139,17 @@ Future<void> setupGetIt() async {
       getIt<FocusRepository>(),
       getIt<SettingsRepository>(),
     ),
+  );
+
+  getIt.registerSingleton<DailyGoalCubit>(
+    DailyGoalCubit(getIt<DailyGoalRepository>()),
+  );
+
+  getIt.registerSingleton<GamificationCubit>(
+    GamificationCubit(getIt<GamificationRepository>()),
+  );
+
+  getIt.registerSingleton<SmartSuggestionsCubit>(
+    SmartSuggestionsCubit(getIt<SuggestionsRepository>()),
   );
 }

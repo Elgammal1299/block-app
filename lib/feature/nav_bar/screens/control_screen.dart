@@ -8,10 +8,26 @@ import '../../ui/view_model/schedule_cubit/schedule_cubit.dart';
 import '../../ui/view_model/schedule_cubit/schedule_state.dart';
 import '../../ui/view_model/usage_limit_cubit/usage_limit_cubit.dart';
 import '../../ui/view_model/usage_limit_cubit/usage_limit_state.dart';
+import '../../ui/view/widgets/app_category_filter.dart';
 
 /// Control Screen - Main hub for app blocking, schedules, and usage limits
-class ControlScreen extends StatelessWidget {
-  const ControlScreen({super.key});
+class ControlScreen extends StatefulWidget {
+  const ControlScreen({Key? key}) : super(key: key);
+
+  @override
+  State<ControlScreen> createState() => _ControlScreenState();
+}
+
+class _ControlScreenState extends State<ControlScreen> {
+  AppCategory _selectedCategory = AppCategory.all;
+  String _searchQuery = '';
+  TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,18 +48,22 @@ class ControlScreen extends StatelessWidget {
             children: [
               // Header
               Text(
-                'App Control',
+                'التحكم في التطبيقات',
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Manage blocked apps, schedules, and usage limits',
+                'إدارة التطبيقات المحظورة والجداول وحدود الاستخدام',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: Colors.grey[600],
                 ),
               ),
+              const SizedBox(height: 24),
+
+              // Search and Category Filter
+              _buildSearchAndFilter(context),
               const SizedBox(height: 24),
 
               // Quick Stats Cards
@@ -52,7 +72,7 @@ class ControlScreen extends StatelessWidget {
 
               // Main Actions
               Text(
-                'Quick Actions',
+                'الإجراءات السريعة',
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -76,9 +96,62 @@ class ControlScreen extends StatelessWidget {
           Navigator.of(context).pushNamed(AppRoutes.appSelection);
         },
         icon: const Icon(Icons.block),
-        label: const Text('Block Apps'),
+        label: const Text('حظر التطبيقات'),
         backgroundColor: Colors.red,
       ),
+    );
+  }
+
+  Widget _buildSearchAndFilter(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Search Field
+        TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: 'ابحث عن تطبيق...',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: _searchQuery.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      setState(() {
+                        _searchQuery = '';
+                        _searchController.clear();
+                      });
+                    },
+                  )
+                : null,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onChanged: (value) {
+            setState(() {
+              _searchQuery = value;
+            });
+          },
+        ),
+        const SizedBox(height: 16),
+        
+        // Category Filter
+        Text(
+          'التصنيفات',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        const SizedBox(height: 8),
+        AppCategoryFilter(
+          selectedCategory: _selectedCategory,
+          onCategoryChanged: (category) {
+            setState(() {
+              _selectedCategory = category;
+            });
+          },
+        ),
+      ],
     );
   }
 
@@ -110,7 +183,7 @@ class ControlScreen extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _buildStatCard(
-                        'Blocked\nApps',
+                        'التطبيقات\nالمحظورة',
                         blockedCount.toString(),
                         Icons.block,
                         Colors.red,
@@ -119,7 +192,7 @@ class ControlScreen extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildStatCard(
-                        'Active\nSchedules',
+                        'الجداول\nالنشطة',
                         schedulesCount.toString(),
                         Icons.schedule,
                         Colors.blue,
@@ -128,7 +201,7 @@ class ControlScreen extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildStatCard(
-                        'Usage\nLimits',
+                        'حدود\nالاستخدام',
                         limitsCount.toString(),
                         Icons.timer,
                         Colors.orange,
@@ -188,32 +261,32 @@ class ControlScreen extends StatelessWidget {
       children: [
         _buildActionCard(
           context,
-          'Block Apps',
-          'Add apps to block',
+          'حظر التطبيقات',
+          'إضافة تطبيقات للحظر',
           Icons.add_circle_outline,
           Colors.red,
           () => Navigator.of(context).pushNamed(AppRoutes.appSelection),
         ),
         _buildActionCard(
           context,
-          'Schedules',
-          'Time-based blocking',
+          'الجداول الزمنية',
+          'حظر حسب الوقت',
           Icons.calendar_today,
           Colors.green,
           () => Navigator.of(context).pushNamed(AppRoutes.schedules),
         ),
         _buildActionCard(
           context,
-          'Usage Limits',
-          'Set daily limits',
+          'حدود الاستخدام',
+          'تحديد حدود يومية',
           Icons.timer_outlined,
           Colors.orange,
           () => Navigator.of(context).pushNamed(AppRoutes.usageLimitSelection),
         ),
         _buildActionCard(
           context,
-          'Blocked List',
-          'View all blocked',
+          'قائمة المحظورات',
+          'عرض كل التطبيقات المحظورة',
           Icons.list_alt,
           Colors.purple,
           () => Navigator.of(context).pushNamed(AppRoutes.blockedAppsList),

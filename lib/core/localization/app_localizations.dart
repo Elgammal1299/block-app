@@ -217,6 +217,39 @@ class AppLocalizations {
   String get failedToCreateList => translate('failed_to_create_list');
   String get deleteListConfirm => translate('delete_list_confirm');
   String get focusMode => translate('focus_mode');
+
+  // Gamification
+  String get dailyGoal => translate('daily_goal');
+  String get dailyGoalTitle => translate('daily_goal_title');
+  String get dailyGoalAchieved => translate('daily_goal_achieved');
+  String get minutesToday => translate('minutes_today');
+  String get daysStreakLabel => translate('days_streak_label');
+  String get quickBlock => translate('quick_block');
+  String get focusTimer => translate('focus_timer');
+  String get activeSchedule => translate('active_schedule');
+  String get achievements => translate('achievements');
+  String level(int levelNum) => translate('level').replaceAll('{level}', levelNum.toString());
+  String xpPoints(int xp) => translate('xp_points').replaceAll('{xp}', xp.toString());
+  String get smartSuggestions => translate('smart_suggestions');
+  String tryFocusMode(String mode) => translate('try_focus_mode').replaceAll('{mode}', mode);
+  String get nextSchedule => translate('next_schedule');
+  String get noActiveSchedule => translate('no_active_schedule');
+  String get editGoal => translate('edit_goal');
+  String get setDailyGoal => translate('set_daily_goal');
+  String get congratulations => translate('congratulations');
+  String get achievementUnlocked => translate('achievement_unlocked');
+  String get totalFocusTime => translate('total_focus_time');
+  String get sessionsCompleted => translate('sessions_completed');
+  String get focusModes => translate('focus_modes');
+  String get viewMore => translate('view_more');
+  String get topAppsToday => translate('top_apps_today');
+  String get blockAttemptsToday => translate('block_attempts_today');
+  String get noDataYet => translate('no_data_yet');
+  String get startFirstSession => translate('start_first_session');
+  String get activeNow => translate('active_now');
+  String get noSchedules => translate('no_schedules');
+  String get viewAllSchedules => translate('view_all_schedules');
+  String get achievementsUnlocked => translate('achievements_unlocked');
 }
 
 // English translations
@@ -408,6 +441,39 @@ const Map<String, String> _enStrings = {
   'failed_to_create_list': 'Failed to create list',
   'delete_list_confirm': 'Are you sure you want to delete this list?',
   'focus_mode': 'Focus Mode',
+
+  // Gamification
+  'daily_goal': 'Daily Goal',
+  'daily_goal_title': 'Focus Goal',
+  'daily_goal_achieved': 'Goal Achieved! 🎉',
+  'minutes_today': 'minutes today',
+  'days_streak_label': '{days} days',
+  'quick_block': 'Quick Block',
+  'focus_timer': 'Focus Timer',
+  'active_schedule': 'Active Schedule',
+  'achievements': 'Achievements',
+  'level': 'Level {level}',
+  'xp_points': '{xp} XP',
+  'smart_suggestions': 'Smart Suggestions',
+  'try_focus_mode': 'Try {mode} mode now',
+  'next_schedule': 'Next Schedule',
+  'no_active_schedule': 'No active schedule',
+  'edit_goal': 'Edit Goal',
+  'set_daily_goal': 'Set Daily Goal',
+  'congratulations': 'Congratulations!',
+  'achievement_unlocked': 'Achievement Unlocked',
+  'total_focus_time': 'Total Focus Time',
+  'sessions_completed': 'Sessions Completed',
+  'focus_modes': 'Focus Modes',
+  'view_more': 'View More',
+  'top_apps_today': 'Most Used Apps',
+  'block_attempts_today': 'Block attempts today',
+  'no_data_yet': 'No data yet',
+  'start_first_session': 'Start your first focus session',
+  'active_now': 'Active Now',
+  'no_schedules': 'No schedules',
+  'view_all_schedules': 'View All Schedules',
+  'achievements_unlocked': 'unlocked',
 };
 
 // Arabic translations
@@ -599,6 +665,39 @@ const Map<String, String> _arStrings = {
   'failed_to_create_list': 'فشل إنشاء القائمة',
   'delete_list_confirm': 'هل أنت متأكد من حذف هذه القائمة؟',
   'focus_mode': 'وضع التركيز',
+
+  // Gamification
+  'daily_goal': 'الهدف اليومي',
+  'daily_goal_title': 'هدف التركيز',
+  'daily_goal_achieved': 'تحقق الهدف! 🎉',
+  'minutes_today': 'دقيقة اليوم',
+  'days_streak_label': '{days} يوم',
+  'quick_block': 'حظر سريع',
+  'focus_timer': 'مؤقت التركيز',
+  'active_schedule': 'الجدول النشط',
+  'achievements': 'الإنجازات',
+  'level': 'المستوى {level}',
+  'xp_points': '{xp} نقطة',
+  'smart_suggestions': 'اقتراحات ذكية',
+  'try_focus_mode': 'جرب وضع {mode} الآن',
+  'next_schedule': 'الجدول القادم',
+  'no_active_schedule': 'لا يوجد جدول نشط',
+  'edit_goal': 'تعديل الهدف',
+  'set_daily_goal': 'تحديد هدف يومي',
+  'congratulations': 'تهانينا!',
+  'achievement_unlocked': 'إنجاز جديد',
+  'total_focus_time': 'إجمالي وقت التركيز',
+  'sessions_completed': 'الجلسات المكتملة',
+  'focus_modes': 'أوضاع التركيز',
+  'view_more': 'عرض المزيد',
+  'top_apps_today': 'أكثر التطبيقات استخداماً',
+  'block_attempts_today': 'محاولات الحظر اليوم',
+  'no_data_yet': 'لا توجد بيانات بعد',
+  'start_first_session': 'ابدأ أول جلسة تركيز',
+  'active_now': 'نشط الآن',
+  'no_schedules': 'لا توجد جداول',
+  'view_all_schedules': 'عرض كل الجداول',
+  'achievements_unlocked': 'مفتوحة',
 };
 
 class _AppLocalizationsDelegate

@@ -14,7 +14,11 @@ import 'package:block_app/feature/ui/view/screens/create_focus_list_screen.dart'
 import 'package:block_app/feature/ui/view/screens/active_session_screen.dart';
 import 'package:block_app/feature/ui/view/screens/focus_history_screen.dart';
 import 'package:block_app/feature/ui/view/screens/statistics_dashboard_screen.dart';
+import 'package:block_app/feature/ui/view/screens/quick_block_settings_screen.dart';
+import 'package:block_app/feature/ui/view/screens/app_selection_quick_block_screen.dart';
+import 'package:block_app/feature/ui/view/screens/quick_mode_details_screen.dart';
 import 'package:block_app/feature/ui/view/screens/block_screen_style_screen.dart';
+import 'package:block_app/feature/ui/view/widgets/focus_mode_card.dart';
 import 'package:block_app/feature/data/models/blocked_app.dart';
 import 'package:block_app/feature/data/models/focus_list.dart';
 
@@ -34,6 +38,18 @@ class AppRouter {
       // App management routes
       case AppRoutes.appSelection:
         return RouterTransitions.buildHorizontal(const AppSelectionScreen());
+
+      case AppRoutes.quickBlockSettings:
+        return RouterTransitions.buildHorizontal(const QuickBlockSettingsScreen());
+
+      case AppRoutes.appSelectionForQuickBlock:
+        return RouterTransitions.buildHorizontal(const AppSelectionQuickBlockScreen());
+
+      case '/quick-mode-details':
+        final focusMode = settings.arguments as FocusModeType;
+        return RouterTransitions.buildHorizontal(
+          QuickModeDetailsScreen(focusMode: focusMode),
+        );
 
       case AppRoutes.appScheduleSelection:
         final apps = settings.arguments as List<BlockedApp>;

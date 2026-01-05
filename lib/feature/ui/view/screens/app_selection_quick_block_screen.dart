@@ -9,14 +9,14 @@ import '../../../data/models/app_info.dart';
 import '../../../data/models/blocked_app.dart';
 import '../widgets/app_category_filter.dart';
 
-class AppSelectionScreen extends StatefulWidget {
-  const AppSelectionScreen({super.key});
+class AppSelectionQuickBlockScreen extends StatefulWidget {
+  const AppSelectionQuickBlockScreen({super.key});
 
   @override
-  State<AppSelectionScreen> createState() => _AppSelectionScreenState();
+  State<AppSelectionQuickBlockScreen> createState() => _AppSelectionQuickBlockScreenState();
 }
 
-class _AppSelectionScreenState extends State<AppSelectionScreen>
+class _AppSelectionQuickBlockScreenState extends State<AppSelectionQuickBlockScreen>
     with SingleTickerProviderStateMixin {
   final Set<String> _selectedPackages = {};
   late TabController _tabController;
@@ -51,7 +51,6 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
     final blockedAppsCubit = getIt<BlockedAppsCubit>();
 
     // Start loading apps (don't await - let it load in background)
-    // This allows the CircularProgressIndicator to animate smoothly
     appListCubit.loadInstalledApps();
 
     // Load currently blocked apps and add to selection
@@ -89,16 +88,22 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
         appName: appInfo.appName,
         isBlocked: true,
         blockAttempts: 0,
-        scheduleIds: [], // Will be set in next screen
+        scheduleIds: [], // No schedule for quick block
       );
     }).toList();
 
-    // Navigate to schedule selection screen
+    // Save to blocked apps
+    final blockedAppsCubit = getIt<BlockedAppsCubit>();
+    await blockedAppsCubit.saveBlockedApps(blockedApps);
+
     if (mounted) {
-      Navigator.of(context).pushNamed(
-        '/app-schedule-selection',
-        arguments: blockedApps,
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تم حظر ${blockedApps.length} تطبيق بنجاح'),
+          duration: const Duration(seconds: 2),
+        ),
       );
+      Navigator.of(context).pop();
     }
   }
 
@@ -106,14 +111,17 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Select Apps to Block'),
+        title: const Text('اختر التطبيقات للحظر'),
+        backgroundColor: Colors.blue[50],
+        foregroundColor: Colors.blue[700],
+        elevation: 0,
         actions: [
           if (_selectedPackages.isNotEmpty)
             TextButton.icon(
               onPressed: _saveSelection,
               icon: const Icon(Icons.check, color: Colors.white),
               label: Text(
-                'Save (${_selectedPackages.length})',
+                'حفظ (${_selectedPackages.length})',
                 style: const TextStyle(color: Colors.white),
               ),
             ),
@@ -129,7 +137,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
                 padding: const EdgeInsets.all(16.0),
                 child: TextField(
                   decoration: InputDecoration(
-                    hintText: 'Search apps...',
+                    hintText: 'البحث عن تطبيقات...',
                     prefixIcon: const Icon(Icons.search),
                     filled: true,
                     border: OutlineInputBorder(
@@ -151,7 +159,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
                     const Icon(Icons.settings_applications, size: 20),
                     const SizedBox(width: 8),
                     const Text(
-                      'Show system apps',
+                      'عرض تطبيقات النظام',
                       style: TextStyle(fontSize: 14),
                     ),
                     const Spacer(),
@@ -187,11 +195,11 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
                   tabs: const [
                     Tab(
                       icon: Icon(Icons.apps),
-                      text: 'All Apps',
+                      text: 'جميع التطبيقات',
                     ),
                     Tab(
                       icon: Icon(Icons.category),
-                      text: 'Categories',
+                      text: 'الفئات',
                     ),
                   ],
                 ),
@@ -224,7 +232,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${_selectedPackages.length} apps selected',
+                        '${_selectedPackages.length} تطبيق محدد',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.primary,
@@ -253,8 +261,9 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
               onPressed: _saveSelection,
               icon: const Icon(Icons.check),
               label: Text(
-                'Block ${_selectedPackages.length} Apps',
+                'حظر ${_selectedPackages.length} تطبيق',
               ),
+              backgroundColor: Colors.blue[600],
             )
           : null,
     );
@@ -286,7 +295,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
               ),
               const SizedBox(height: 16),
               Text(
-                'No apps found',
+                'لم يتم العثور على تطبيقات',
                 style: TextStyle(
                   fontSize: 18,
                   color: Colors.grey.withValues(alpha: 0.7),
@@ -313,7 +322,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
             const Icon(Icons.error_outline, size: 80, color: Colors.red),
             const SizedBox(height: 16),
             Text(
-              'Error: ${state.message}',
+              'خطأ: ${state.message}',
               textAlign: TextAlign.center,
             ),
           ],
@@ -339,7 +348,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
               ),
               const SizedBox(height: 16),
               Text(
-                'No apps found',
+                'لم يتم العثور على تطبيقات',
                 style: TextStyle(
                   fontSize: 18,
                   color: Colors.grey.withValues(alpha: 0.7),
@@ -491,7 +500,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
             const Icon(Icons.error_outline, size: 80, color: Colors.red),
             const SizedBox(height: 16),
             Text(
-              'Error: ${state.message}',
+              'خطأ: ${state.message}',
               textAlign: TextAlign.center,
             ),
           ],
