@@ -17,6 +17,7 @@ import 'package:block_app/feature/ui/view/screens/statistics_dashboard_screen.da
 import 'package:block_app/feature/ui/view/screens/quick_block_settings_screen.dart';
 import 'package:block_app/feature/ui/view/screens/app_selection_quick_block_screen.dart';
 import 'package:block_app/feature/ui/view/screens/quick_mode_details_screen.dart';
+import 'package:block_app/feature/ui/view/screens/focus_mode_app_selection_screen.dart';
 import 'package:block_app/feature/ui/view/screens/block_screen_style_screen.dart';
 import 'package:block_app/feature/ui/view/widgets/focus_mode_card.dart';
 import 'package:block_app/feature/data/models/blocked_app.dart';
@@ -45,10 +46,16 @@ class AppRouter {
       case AppRoutes.appSelectionForQuickBlock:
         return RouterTransitions.buildHorizontal(const AppSelectionQuickBlockScreen());
 
-      case '/quick-mode-details':
+      case AppRoutes.quickModeDetails:
         final focusMode = settings.arguments as FocusModeType;
         return RouterTransitions.buildHorizontal(
           QuickModeDetailsScreen(focusMode: focusMode),
+        );
+
+      case AppRoutes.focusModeAppSelection:
+        final focusMode = settings.arguments as FocusModeType;
+        return RouterTransitions.buildHorizontal(
+          FocusModeAppSelectionScreen(focusMode: focusMode),
         );
 
       case AppRoutes.appScheduleSelection:

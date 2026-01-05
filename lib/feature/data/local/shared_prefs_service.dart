@@ -6,6 +6,8 @@ import '../models/app_usage_limit.dart';
 import '../models/focus_list.dart';
 import '../models/focus_session.dart';
 import '../models/focus_session_history.dart';
+import '../models/focus_mode_config.dart';
+import '../models/custom_focus_mode.dart';
 import '../../../core/constants/app_constants.dart';
 
 class SharedPrefsService {
@@ -357,6 +359,111 @@ class SharedPrefsService {
   Future<bool> clearAllHistory() async {
     return await _preferences?.remove(AppConstants.keyFocusSessionHistory) ??
         false;
+  }
+
+  // ========== Focus Mode Configs ==========
+
+  Future<List<FocusModeConfig>> getFocusModeConfigs() async {
+    final String? jsonString =
+        _preferences?.getString(AppConstants.keyFocusModeConfigs);
+    if (jsonString == null || jsonString.isEmpty) return [];
+
+    final List<dynamic> jsonList = json.decode(jsonString);
+    return jsonList.map((json) => FocusModeConfig.fromJson(json)).toList();
+  }
+
+  Future<bool> saveFocusModeConfigs(List<FocusModeConfig> configs) async {
+    final jsonList = configs.map((config) => config.toJson()).toList();
+    final jsonString = json.encode(jsonList);
+    return await _preferences?.setString(
+            AppConstants.keyFocusModeConfigs, jsonString) ??
+        false;
+  }
+
+  Future<bool> saveFocusModeConfig(FocusModeConfig config) async {
+    final configs = await getFocusModeConfigs();
+    final index = configs.indexWhere((c) => c.id == config.id);
+
+    if (index != -1) {
+      // Update existing
+      configs[index] = config;
+    } else {
+      // Add new
+      configs.add(config);
+    }
+
+    return await saveFocusModeConfigs(configs);
+  }
+
+  Future<bool> updateFocusModeConfig(FocusModeConfig config) async {
+    final configs = await getFocusModeConfigs();
+    final index = configs.indexWhere((c) => c.id == config.id);
+
+    if (index != -1) {
+      configs[index] = config;
+      return await saveFocusModeConfigs(configs);
+    }
+
+    return false;
+  }
+
+  Future<bool> deleteFocusModeConfig(String id) async {
+    final configs = await getFocusModeConfigs();
+    configs.removeWhere((config) => config.id == id);
+    return await saveFocusModeConfigs(configs);
+  }
+
+  // ========== Custom Focus Modes ==========
+
+  Future<List<CustomFocusMode>> getCustomFocusModes() async {
+    final String? jsonString =
+        _preferences?.getString(AppConstants.keyCustomFocusModes);
+    if (jsonString == null || jsonString.isEmpty) return [];
+
+    final List<dynamic> jsonList = json.decode(jsonString);
+    return jsonList.map((json) => CustomFocusMode.fromJson(json)).toList();
+  }
+
+  Future<bool> saveCustomFocusModes(List<CustomFocusMode> modes) async {
+    final jsonList = modes.map((mode) => mode.toJson()).toList();
+    final jsonString = json.encode(jsonList);
+    return await _preferences?.setString(
+            AppConstants.keyCustomFocusModes, jsonString) ??
+        false;
+  }
+
+  Future<bool> addCustomFocusMode(CustomFocusMode mode) async {
+    final modes = await getCustomFocusModes();
+    if (!modes.any((m) => m.id == mode.id)) {
+      modes.add(mode);
+      return await saveCustomFocusModes(modes);
+    }
+    return false;
+  }
+
+  Future<bool> updateCustomFocusMode(CustomFocusMode mode) async {
+    final modes = await getCustomFocusModes();
+    final index = modes.indexWhere((m) => m.id == mode.id);
+    if (index != -1) {
+      modes[index] = mode;
+      return await saveCustomFocusModes(modes);
+    }
+    return false;
+  }
+
+  Future<bool> deleteCustomFocusMode(String id) async {
+    final modes = await getCustomFocusModes();
+    modes.removeWhere((mode) => mode.id == id);
+    return await saveCustomFocusModes(modes);
+  }
+
+  Future<CustomFocusMode?> getCustomFocusModeById(String id) async {
+    final modes = await getCustomFocusModes();
+    try {
+      return modes.firstWhere((mode) => mode.id == id);
+    } catch (e) {
+      return null;
+    }
   }
 
   // ========== Presets Initialization Flag ==========

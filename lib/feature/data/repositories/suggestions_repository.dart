@@ -66,20 +66,93 @@ class SuggestionsRepository {
       }
     }
 
-    // 3. اقتراح بدء جلسة تركيز (صباحاً)
-    if (now.hour >= 8 && now.hour < 11) {
-      final morningSuggestion = SmartSuggestion(
-        id: 'morning_focus_${now.day}',
+    // 3. اقتراح وضع الدراسة (صباحاً في أيام الأسبوع)
+    if (now.hour >= 8 && now.hour < 10 && now.weekday <= 5) {
+      final studySuggestion = SmartSuggestion(
+        id: 'morning_study_${now.day}',
         type: SuggestionType.startFocusMode,
-        title: 'صباح الخير!',
-        message: 'ابدأ يومك بجلسة تركيز لزيادة إنتاجيتك',
-        icon: Icons.wb_sunny,
+        title: 'صباح الإنتاجية',
+        message: 'ابدأ وضع الدراسة لبداية يوم منتج',
+        icon: Icons.school,
         color: Colors.blue,
-        actionRoute: '/focus',
+        actionRoute: '/quick-mode-details',
+        actionData: {'modeType': 'study'},
       );
 
-      if (!dismissedIds.contains(morningSuggestion.id)) {
-        suggestions.add(morningSuggestion);
+      if (!dismissedIds.contains(studySuggestion.id)) {
+        suggestions.add(studySuggestion);
+      }
+    }
+
+    // 4. اقتراح وضع النوم (مساءً)
+    if (now.hour >= 22 && now.hour < 23) {
+      final sleepSuggestion = SmartSuggestion(
+        id: 'sleep_bedtime_${now.day}',
+        type: SuggestionType.startFocusMode,
+        title: 'حان وقت النوم',
+        message: 'ابدأ وضع النوم للحصول على راحة أفضل',
+        icon: Icons.nightlight_round,
+        color: Colors.indigo,
+        actionRoute: '/quick-mode-details',
+        actionData: {'modeType': 'sleep'},
+      );
+
+      if (!dismissedIds.contains(sleepSuggestion.id)) {
+        suggestions.add(sleepSuggestion);
+      }
+    }
+
+    // 5. اقتراح وضع العمل (صباحاً في أيام الأسبوع)
+    if (now.hour >= 9 && now.hour < 11 && now.weekday <= 5) {
+      final workSuggestion = SmartSuggestion(
+        id: 'morning_work_${now.day}',
+        type: SuggestionType.startFocusMode,
+        title: 'وقت العمل',
+        message: 'ابدأ وضع العمل لزيادة إنتاجيتك',
+        icon: Icons.work,
+        color: Colors.teal,
+        actionRoute: '/quick-mode-details',
+        actionData: {'modeType': 'work'},
+      );
+
+      if (!dismissedIds.contains(workSuggestion.id)) {
+        suggestions.add(workSuggestion);
+      }
+    }
+
+    // 6. اقتراح "وقت لنفسي" (عطلة نهاية الأسبوع، عصراً)
+    if (now.weekday >= 6 && now.hour >= 14 && now.hour < 18) {
+      final meTimeSuggestion = SmartSuggestion(
+        id: 'weekend_metime_${now.day}',
+        type: SuggestionType.startFocusMode,
+        title: 'وقت لنفسك',
+        message: 'استمتع بوقتك بدون مقاطعات العمل',
+        icon: Icons.self_improvement,
+        color: Colors.purple,
+        actionRoute: '/quick-mode-details',
+        actionData: {'modeType': 'meTime'},
+      );
+
+      if (!dismissedIds.contains(meTimeSuggestion.id)) {
+        suggestions.add(meTimeSuggestion);
+      }
+    }
+
+    // 7. اقتراح العمل العميق (ظهراً في أيام الأسبوع)
+    if (now.hour >= 14 && now.hour < 16 && now.weekday <= 5) {
+      final deepWorkSuggestion = SmartSuggestion(
+        id: 'afternoon_deepwork_${now.day}',
+        type: SuggestionType.startFocusMode,
+        title: 'العمل العميق',
+        message: 'وقت مثالي للتركيز العميق وإنجاز المهام الصعبة',
+        icon: Icons.psychology,
+        color: Colors.deepPurple,
+        actionRoute: '/quick-mode-details',
+        actionData: {'modeType': 'deepWork'},
+      );
+
+      if (!dismissedIds.contains(deepWorkSuggestion.id)) {
+        suggestions.add(deepWorkSuggestion);
       }
     }
 

@@ -17,12 +17,7 @@ class SimpleDailyGoalCard extends StatelessWidget {
       ),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              theme.colorScheme.primary,
-              theme.colorScheme.primary.withValues(alpha: 0.7),
-            ],
-          ),
+          color: theme.colorScheme.primary, // Solid color
           borderRadius: BorderRadius.circular(20),
         ),
         padding: const EdgeInsets.all(20),
@@ -117,10 +112,9 @@ class SimpleDailyGoalCard extends StatelessWidget {
   }
 
   Color _getProgressColor(double progress) {
-    if (progress >= 1.0) return Colors.amber;
-    if (progress >= 0.75) return Colors.green;
-    if (progress >= 0.50) return Colors.yellow;
-    if (progress >= 0.25) return Colors.orange;
-    return Colors.red;
+    // Only show green when near completion (75%+)
+    if (progress >= 0.75) return const Color(0xFF42B72A); // Success green
+    // Otherwise white on primary background
+    return Colors.white;
   }
 }

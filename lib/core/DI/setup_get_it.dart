@@ -9,6 +9,8 @@ import 'package:block_app/feature/data/repositories/statistics_repository.dart';
 import 'package:block_app/feature/data/repositories/daily_goal_repository.dart';
 import 'package:block_app/feature/data/repositories/gamification_repository.dart';
 import 'package:block_app/feature/data/repositories/suggestions_repository.dart';
+import 'package:block_app/feature/data/repositories/focus_mode_config_repository.dart';
+import 'package:block_app/feature/data/repositories/custom_focus_mode_repository.dart';
 import 'package:block_app/feature/ui/view_model/theme_cubit/theme_cubit.dart';
 import 'package:block_app/feature/ui/view_model/blocked_apps_cubit/blocked_apps_cubit.dart';
 import 'package:block_app/feature/ui/view_model/app_list_cubit/app_list_cubit.dart';
@@ -21,6 +23,8 @@ import 'package:block_app/feature/ui/view_model/usage_limit_cubit/usage_limit_cu
 import 'package:block_app/feature/ui/view_model/daily_goal_cubit/daily_goal_cubit.dart';
 import 'package:block_app/feature/ui/view_model/gamification_cubit/gamification_cubit.dart';
 import 'package:block_app/feature/ui/view_model/suggestions_cubit/suggestions_cubit.dart';
+import 'package:block_app/feature/ui/view_model/focus_mode_config_cubit/focus_mode_config_cubit.dart';
+import 'package:block_app/feature/ui/view_model/custom_focus_mode_cubit/custom_focus_mode_cubit.dart';
 
 /// Global GetIt instance for dependency injection
 final getIt = GetIt.instance;
@@ -95,6 +99,20 @@ Future<void> setupGetIt() async {
     ),
   );
 
+  // Focus Mode Config Repository
+  getIt.registerSingleton<FocusModeConfigRepository>(
+    FocusModeConfigRepository(
+      getIt<SharedPrefsService>(),
+      getIt<FocusRepository>(),
+      getIt<PlatformChannelService>(),
+    ),
+  );
+
+  // Custom Focus Mode Repository
+  getIt.registerSingleton<CustomFocusModeRepository>(
+    CustomFocusModeRepository(getIt<SharedPrefsService>()),
+  );
+
   // ==================== Cubits - Singleton ====================
   // All Cubits are Singletons to maintain consistent state across screens
   // This is required when using bloc parameter with BlocBuilder
@@ -151,5 +169,13 @@ Future<void> setupGetIt() async {
 
   getIt.registerSingleton<SmartSuggestionsCubit>(
     SmartSuggestionsCubit(getIt<SuggestionsRepository>()),
+  );
+
+  getIt.registerSingleton<FocusModeConfigCubit>(
+    FocusModeConfigCubit(getIt<FocusModeConfigRepository>()),
+  );
+
+  getIt.registerSingleton<CustomFocusModeCubit>(
+    CustomFocusModeCubit(getIt<CustomFocusModeRepository>()),
   );
 }

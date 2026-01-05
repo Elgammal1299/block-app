@@ -19,6 +19,8 @@ class AppConstants {
   static const String keyFocusSessionHistory = 'focus_session_history';
   static const String keyPresetsInitialized = 'presets_initialized';
   static const String keyBlockScreenStyle = 'block_screen_style';
+  static const String keyFocusModeConfigs = 'focus_mode_configs';
+  static const String keyCustomFocusModes = 'custom_focus_modes';
 
   // Platform Channel Methods
   static const String methodGetInstalledApps = 'getInstalledApps';

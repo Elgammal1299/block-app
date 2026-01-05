@@ -33,15 +33,12 @@ class AchievementsBanner extends StatelessWidget {
           ),
           child: Container(
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF667eea),
-                  Color(0xFF764ba2),
-                ],
-              ),
+              color: const Color(0xFF6B7FE8), // Solid purple (average of gradient)
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.15),
+                width: 1,
+              ),
             ),
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -71,7 +68,7 @@ class AchievementsBanner extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -95,7 +92,7 @@ class AchievementsBanner extends StatelessWidget {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: latestAchievement.color.withOpacity(0.3),
+                          color: latestAchievement.color.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
@@ -121,7 +118,7 @@ class AchievementsBanner extends StatelessWidget {
                               '+${latestAchievement.xpReward} XP',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.white.withOpacity(0.8),
+                                color: Colors.white.withValues(alpha: 0.8),
                               ),
                             ),
                           ],
@@ -134,7 +131,7 @@ class AchievementsBanner extends StatelessWidget {
                     'ابدأ رحلتك واحصل على إنجازاتك الأولى!',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                     ),
                   ),
 
@@ -157,19 +154,19 @@ class AchievementsBanner extends StatelessWidget {
                       icon: Icons.local_fire_department,
                       label: 'السلسلة',
                       value: '${progress.currentStreak}',
-                      color: Colors.orange,
+                      color: const Color(0xFFFF9800), // accentWarning
                     ),
                     _buildStatItem(
                       icon: Icons.timelapse,
                       label: 'الجلسات',
                       value: '${progress.completedSessions}',
-                      color: Colors.blue,
+                      color: const Color(0xFF2D88FF), // accentInfo
                     ),
                     _buildStatItem(
                       icon: Icons.stars,
                       label: 'XP',
                       value: '${progress.totalXP}',
-                      color: Colors.amber,
+                      color: const Color(0xFFFF9800), // accentWarning
                     ),
                   ],
                 ),
@@ -203,7 +200,7 @@ class AchievementsBanner extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 11,
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withValues(alpha: 0.7),
           ),
         ),
       ],

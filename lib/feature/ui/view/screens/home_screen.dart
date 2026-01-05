@@ -18,11 +18,14 @@ import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/services/platform_channel_service.dart';
 import '../../../../core/router/app_routes.dart';
 import '../widgets/home/simple_daily_goal_card.dart';
-import '../widgets/home/quick_actions_section.dart';
-import '../widgets/home/focus_modes_grid.dart';
 import '../widgets/home/achievements_banner.dart';
 import '../widgets/home/smart_suggestion_card.dart';
 import '../widgets/home/active_schedule_preview.dart';
+import '../widgets/home/custom_mode_card.dart';
+import '../widgets/home/usage_limit_card.dart';
+import '../widgets/home/preset_mode_card.dart';
+import '../widgets/home/saved_custom_modes_section.dart';
+import '../widgets/focus_mode_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -150,35 +153,45 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 // 1. Quick Block Section
                 _buildQuickBlockSection(context),
-                const SizedBox(height: 24),
-
-                // 2. Pomodoro Section
-                _buildPomodoroSection(context),
-                const SizedBox(height: 24),
-
-                // 3. Quick Modes Section
-                _buildSectionHeader(context, 'الأوضاع السريعة', Icons.flash_on),
-                const SizedBox(height: 12),
-                const FocusModesGrid(),
                 const SizedBox(height: 20),
 
-                // 4. Daily Goal Card
+                // 2. Custom Mode Card (جديد)
+                const CustomModeCard(),
+                const SizedBox(height: 20),
+
+                // 3. Usage Limit Card (جديد)
+                const UsageLimitCard(),
+                const SizedBox(height: 20),
+
+                // 4. Sleep Mode Preset (جديد)
+                const PresetModeCard(modeType: FocusModeType.sleep),
+                const SizedBox(height: 20),
+
+                // 5. Work Mode Preset (جديد)
+                const PresetModeCard(modeType: FocusModeType.work),
+                const SizedBox(height: 20),
+
+                // 6. Saved Custom Modes Section (جديد)
+                const SavedCustomModesSection(),
+                const SizedBox(height: 20),
+
+                // 7. Daily Goal Card
                 const SimpleDailyGoalCard(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
 
-                // 5. Smart Suggestion
+                // 8. Smart Suggestion
                 const SmartSuggestionCard(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
 
-                // 6. Achievements
+                // 9. Achievements
                 _buildSectionHeader(context, 'الإنجازات', Icons.emoji_events),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 const AchievementsBanner(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
 
-                // 7. Active Schedule Preview
+                // 10. Active Schedule Preview
                 const ActiveSchedulePreview(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -199,27 +212,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildQuickBlockSection(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.blue[400]!,
-            Colors.blue[600]!,
-          ],
-        ),
+        color: theme.colorScheme.primary, // Solid primary blue
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,167 +312,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
-  }
-
-  Widget _buildPomodoroSection(BuildContext context) {
-    final theme = Theme.of(context);
-    
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: theme.dividerColor.withOpacity(0.1),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.timer,
-                  color: Colors.red[600],
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'البرومودورو',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              Icon(
-                Icons.diamond,
-                color: Colors.grey[400],
-                size: 16,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'تقنية إدارة الوقت لتحسين التركيز والإنتاجية',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: Colors.grey[600],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildPomodoroButton(
-                  context,
-                  '25 دقيقة',
-                  'جلسة قياسية',
-                  Icons.play_arrow,
-                  Colors.green,
-                  () => _startPomodoroSession(context, 25),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildPomodoroButton(
-                  context,
-                  '50 دقيقة',
-                  'جلسة طويلة',
-                  Icons.play_arrow,
-                  Colors.orange,
-                  () => _startPomodoroSession(context, 50),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPomodoroButton(
-    BuildContext context,
-    String title,
-    String subtitle,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    final theme = Theme.of(context);
-    
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: color.withOpacity(0.3),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: color,
-              size: 24,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: color,
-                fontSize: 14,
-              ),
-            ),
-            Text(
-              subtitle,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _startPomodoroSession(BuildContext context, int minutes) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('بدأت جلسة البومودورو لمدة $minutes دقيقة'),
-        duration: const Duration(seconds: 2),
-        action: SnackBarAction(
-          label: 'إلغاء',
-          onPressed: () {
-            // TODO: Cancel pomodoro session
-          },
-        ),
-      ),
-    );
-    
-    // TODO: Start actual pomodoro session
-    // This would integrate with FocusSessionCubit
   }
 
   Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {

@@ -8,6 +8,8 @@ class AppRoutes {
   // Quick block routes
   static const quickBlockSettings = '/quick-block-settings';
   static const appSelectionForQuickBlock = '/app-selection-quick-block';
+  static const quickModeDetails = '/quick-mode-details';
+  static const focusModeAppSelection = '/focus-mode-app-selection';
 
   // App management routes
   static const appSelection = '/app-selection';

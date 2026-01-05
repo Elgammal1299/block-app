@@ -42,7 +42,7 @@ class Achievement {
           title: 'البداية',
           description: 'أكمل أول جلسة تركيز',
           icon: Icons.star,
-          color: Colors.amber,
+          color: const Color(0xFFFF9800), // accentWarning
           xpReward: 10,
           isUnlocked: isUnlocked,
           unlockedAt: unlockedAt,
@@ -54,7 +54,7 @@ class Achievement {
           title: 'المثابر',
           description: 'سلسلة 7 أيام متواصلة',
           icon: Icons.local_fire_department,
-          color: Colors.deepOrange,
+          color: const Color(0xFF42B72A), // accentSuccess
           xpReward: 50,
           isUnlocked: isUnlocked,
           unlockedAt: unlockedAt,
@@ -66,7 +66,7 @@ class Achievement {
           title: 'سيد الأهداف',
           description: 'حقق هدفك اليومي 7 أيام',
           icon: Icons.emoji_events,
-          color: Colors.purple,
+          color: const Color(0xFF2D88FF), // accentInfo
           xpReward: 100,
           isUnlocked: isUnlocked,
           unlockedAt: unlockedAt,
@@ -78,7 +78,7 @@ class Achievement {
           title: 'الطائر المبكر',
           description: 'جلسة تركيز قبل 9 صباحاً',
           icon: Icons.wb_sunny,
-          color: Colors.orange,
+          color: const Color(0xFFFF9800), // accentWarning
           xpReward: 25,
           isUnlocked: isUnlocked,
           unlockedAt: unlockedAt,
@@ -90,7 +90,7 @@ class Achievement {
           title: 'بومة الليل',
           description: 'جلسة تركيز بعد 10 مساءً',
           icon: Icons.nights_stay,
-          color: Colors.indigo,
+          color: const Color(0xFF2D88FF), // accentInfo
           xpReward: 25,
           isUnlocked: isUnlocked,
           unlockedAt: unlockedAt,
@@ -102,7 +102,7 @@ class Achievement {
           title: 'محارب التركيز',
           description: 'أكمل 10 جلسات تركيز',
           icon: Icons.shield,
-          color: Colors.blue,
+          color: const Color(0xFF42B72A), // accentSuccess
           xpReward: 75,
           isUnlocked: isUnlocked,
           unlockedAt: unlockedAt,
@@ -114,7 +114,7 @@ class Achievement {
           title: 'سيد الزن',
           description: 'أكمل 100 جلسة تركيز',
           icon: Icons.psychology,
-          color: Colors.deepPurple,
+          color: const Color(0xFF1877F2), // Primary
           xpReward: 200,
           isUnlocked: isUnlocked,
           unlockedAt: unlockedAt,

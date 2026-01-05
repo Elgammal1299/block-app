@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
 
 enum FocusModeType {
-  study('الدراسة', Icons.school, Colors.purple, Duration(minutes: 25)),
-  work('وضع العمل', Icons.work, Colors.blue, Duration(minutes: 50)),
-  sleep('النوم', Icons.nightlight_round, Colors.indigo, Duration(hours: 8)),
-  meTime('وقت لنفسي', Icons.self_improvement, Colors.pink, Duration(hours: 1)),
-  deepWork('العمل العميق', Icons.psychology, Colors.deepPurple, Duration(hours: 1));
+  sleep('النوم', Icons.nightlight_round, Duration(hours: 8)),
+  work('وضع العمل', Icons.work, Duration(minutes: 50)),
+  study('وضع الدراسة', Icons.school, Duration(minutes: 45));
 
-  const FocusModeType(this.displayName, this.icon, this.color, this.duration);
-  
+  const FocusModeType(this.displayName, this.icon, this.duration);
+
   final String displayName;
   final IconData icon;
-  final Color color;
   final Duration duration;
 }
 
@@ -19,24 +16,27 @@ class FocusModeCard extends StatelessWidget {
   final FocusModeType focusMode;
   final VoidCallback onTap;
   final bool isActive;
+  final bool isCustomized;
 
   const FocusModeCard({
     Key? key,
     required this.focusMode,
     required this.onTap,
     this.isActive = false,
+    this.isCustomized = false,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+    final primaryColor = theme.colorScheme.primary; // Use theme primary color
+
     return Card(
       elevation: isActive ? 8 : 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: isActive 
-            ? BorderSide(color: focusMode.color, width: 2)
+        side: isActive
+            ? BorderSide(color: primaryColor, width: 2)
             : BorderSide.none,
       ),
       child: InkWell(
@@ -46,15 +46,8 @@ class FocusModeCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            gradient: isActive
-                ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      focusMode.color.withOpacity(0.2),
-                      focusMode.color.withOpacity(0.1),
-                    ],
-                  )
+            color: isActive
+                ? primaryColor.withValues(alpha: 0.1) // Solid color with opacity
                 : null,
           ),
           child: Column(
@@ -66,16 +59,48 @@ class FocusModeCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: focusMode.color.withOpacity(0.2),
+                      color: primaryColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
                       focusMode.icon,
-                      color: focusMode.color,
+                      color: primaryColor,
                       size: 24,
                     ),
                   ),
                   const Spacer(),
+                  // مؤشر التخصيص
+                  if (isCustomized && !isActive)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.edit,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'مخصص',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  // مؤشر النشاط
                   if (isActive)
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -83,7 +108,7 @@ class FocusModeCard extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: focusMode.color,
+                        color: primaryColor,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -141,16 +166,12 @@ class FocusModeCard extends StatelessWidget {
 
   String _getDescription(FocusModeType mode) {
     switch (mode) {
-      case FocusModeType.study:
-        return 'حظر جميع التطبيقات المشتتة للتركيز في الدراسة';
-      case FocusModeType.work:
-        return 'السماح بالتطبيقات الضرورية فقط للعمل';
       case FocusModeType.sleep:
         return 'تقليل الضوء الأزرق والتنبيهات لتحسين النوم';
-      case FocusModeType.meTime:
-        return 'وقت للاسترخاء والاهتمام بالنفس بدون مقاطعات';
-      case FocusModeType.deepWork:
-        return 'حظر جميع التطبيقات للتركيز العميق';
+      case FocusModeType.work:
+        return 'السماح بالتطبيقات الضرورية فقط للعمل';
+      case FocusModeType.study:
+        return 'السماح بالتطبيقات الضرورية فقط للدراسة';
     }
   }
 }

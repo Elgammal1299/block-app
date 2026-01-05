@@ -12,6 +12,8 @@ import 'package:block_app/feature/ui/view_model/theme_cubit/theme_state.dart';
 import 'package:block_app/feature/ui/view_model/locale_cubit/locale_cubit.dart';
 import 'package:block_app/feature/ui/view_model/locale_cubit/locale_state.dart';
 import 'package:block_app/feature/ui/view_model/app_list_cubit/app_list_cubit.dart';
+import 'package:block_app/feature/data/repositories/focus_mode_config_repository.dart';
+import 'package:block_app/feature/ui/view_model/focus_mode_config_cubit/focus_mode_config_cubit.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +23,9 @@ void main() async {
 
   // Pre-load apps in background (don't await - let it load async)
   _preloadApps();
+
+  // Initialize focus mode presets
+  _initializeFocusModePresets();
 
   // Check if all permissions are granted
   final platformService = getIt<PlatformChannelService>();
@@ -62,6 +67,32 @@ Future<void> _startServicesInBackground() async {
   } catch (e) {
     print('Error starting services in background: $e');
     // Silently fail - services will start when user opens home screen
+  }
+}
+
+/// Initialize focus mode presets in background
+Future<void> _initializeFocusModePresets() async {
+  try {
+    final configRepo = getIt<FocusModeConfigRepository>();
+    final configCubit = getIt<FocusModeConfigCubit>();
+
+    // Check if already initialized
+    final initialized = await configRepo.arePresetsInitialized();
+
+    if (!initialized) {
+      print('Initializing focus mode presets...');
+      final success = await configRepo.initializePresets();
+
+      if (success) {
+        print('Focus mode presets initialized successfully');
+      }
+    }
+
+    // Load configs into cubit
+    await configCubit.loadConfigs();
+  } catch (e) {
+    print('Error initializing focus mode presets: $e');
+    // Silently fail - presets will initialize when user opens focus modes
   }
 }
 
