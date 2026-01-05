@@ -6,6 +6,9 @@ class AppUsageStats {
   final int totalTimeInMillis;
   final DateTime date;
   final Uint8List? icon;
+  final int openCount; // ✨ Number of times app was opened
+  final int
+  blockAttempts; // ✨ Number of times user tried to open this blocked app
 
   AppUsageStats({
     required this.packageName,
@@ -13,6 +16,8 @@ class AppUsageStats {
     required this.totalTimeInMillis,
     required this.date,
     this.icon,
+    this.openCount = 0, // ✨ Default to 0 if not provided
+    this.blockAttempts = 0, // ✨ Default to 0 if not provided
   });
 
   // Get total time in minutes
@@ -42,6 +47,8 @@ class AppUsageStats {
     int timeInMillis,
     DateTime date, {
     Uint8List? icon,
+    int openCount = 0, // ✨ NEW
+    int blockAttempts = 0, // ✨ NEW
   }) {
     return AppUsageStats(
       packageName: packageName,
@@ -49,6 +56,8 @@ class AppUsageStats {
       totalTimeInMillis: timeInMillis,
       date: date,
       icon: icon,
+      openCount: openCount, // ✨ NEW
+      blockAttempts: blockAttempts, // ✨ NEW
     );
   }
 
@@ -59,6 +68,8 @@ class AppUsageStats {
       appName: json['appName'] as String,
       totalTimeInMillis: json['totalTimeInMillis'] as int,
       date: DateTime.parse(json['date'] as String),
+      openCount: json['openCount'] as int? ?? 0, // ✨ NEW
+      blockAttempts: json['blockAttempts'] as int? ?? 0, // ✨ NEW
     );
   }
 
@@ -69,6 +80,8 @@ class AppUsageStats {
       'appName': appName,
       'totalTimeInMillis': totalTimeInMillis,
       'date': date.toIso8601String(),
+      'openCount': openCount, // ✨ NEW
+      'blockAttempts': blockAttempts, // ✨ NEW
     };
   }
 

@@ -260,8 +260,9 @@ class PlatformChannelService {
   /// Returns empty map if service data is stale or unavailable
   Future<Map<String, int>> getTodayUsageFromTrackingService() async {
     try {
-      final Map<dynamic, dynamic> result = await _channel
-          .invokeMethod('getTodayUsageFromTrackingService');
+      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'getTodayUsageFromTrackingService',
+      );
 
       if (result.isEmpty) {
         print('UsageTrackingService data is empty or stale');
@@ -280,10 +281,10 @@ class PlatformChannelService {
   /// Date format: "YYYY-M-D" (e.g., "2025-1-15")
   Future<Map<String, int>> getUsageForDateFromTracking(String date) async {
     try {
-      final Map<dynamic, dynamic> result = await _channel
-          .invokeMethod('getUsageForDateFromTracking', {
-            'date': date,
-          });
+      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'getUsageForDateFromTracking',
+        {'date': date},
+      );
 
       // Convert dynamic map to Map<String, int>
       return result.map((key, value) => MapEntry(key.toString(), value as int));
@@ -296,8 +297,9 @@ class PlatformChannelService {
   /// Get list of dates that have pending snapshots to be saved to database
   Future<List<String>> getPendingSnapshotDates() async {
     try {
-      final List<dynamic> result = await _channel
-          .invokeMethod('getPendingSnapshotDates');
+      final List<dynamic> result = await _channel.invokeMethod(
+        'getPendingSnapshotDates',
+      );
 
       return result.map((date) => date.toString()).toList();
     } on PlatformException catch (e) {
@@ -318,8 +320,9 @@ class PlatformChannelService {
   /// Check if device has OEM restrictions that may affect tracking accuracy
   Future<Map<String, dynamic>> checkOEMRestrictions() async {
     try {
-      final Map<dynamic, dynamic> result = await _channel
-          .invokeMethod('checkOEMRestrictions');
+      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'checkOEMRestrictions',
+      );
 
       return {
         'hasRestrictions': result['hasRestrictions'] as bool,
@@ -344,6 +347,97 @@ class PlatformChannelService {
     } on PlatformException catch (e) {
       print('Error cleaning stored usage data: ${e.message}');
       return false;
+    }
+  }
+
+  // ========== Session Counts (Open Counts) ==========
+
+  /// Get session counts (number of times apps were opened) for a time range
+  /// Uses UsageEvents to count MOVE_TO_FOREGROUND events
+  Future<Map<String, int>> getSessionCounts(
+    DateTime startTime,
+    DateTime endTime,
+  ) async {
+    try {
+      final Map<dynamic, dynamic> result = await _channel
+          .invokeMethod('getSessionCounts', {
+            'startTime': startTime.millisecondsSinceEpoch,
+            'endTime': endTime.millisecondsSinceEpoch,
+          });
+
+      // Convert dynamic map to Map<String, int>
+      return result.map((key, value) => MapEntry(key.toString(), value as int));
+    } on PlatformException catch (e) {
+      print('Error getting session counts: ${e.message}');
+      return {};
+    }
+  }
+
+  /// Get today's session counts from UsageTrackingService (real-time, more accurate)
+  /// This uses data that's updated in real-time by the background service
+  Future<Map<String, int>> getTodaySessionCountsFromTracking() async {
+    try {
+      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'getTodaySessionCountsFromTracking',
+      );
+
+      // Convert dynamic map to Map<String, int>
+      return result.map((key, value) => MapEntry(key.toString(), value as int));
+    } on PlatformException catch (e) {
+      print('Error getting today session counts from tracking: ${e.message}');
+      return {};
+    }
+  }
+
+  /// Get session counts for a specific date from UsageTrackingService storage
+  /// Date format: "YYYY-M-D" (e.g., "2026-1-5")
+  Future<Map<String, int>> getSessionCountsForDate(String date) async {
+    try {
+      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'getSessionCountsForDate',
+        {'date': date},
+      );
+
+      // Convert dynamic map to Map<String, int>
+      return result.map((key, value) => MapEntry(key.toString(), value as int));
+    } on PlatformException catch (e) {
+      print('Error getting session counts for date: ${e.message}');
+      return {};
+    }
+  }
+
+  // ========== Block Attempts (Failed Open Attempts) ==========
+
+  /// Get today's block attempts from tracking (real-time)
+  /// Returns map of packageName -> number of times user tried to open blocked app
+  Future<Map<String, int>> getTodayBlockAttemptsFromTracking() async {
+    try {
+      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'getTodayBlockAttemptsFromTracking',
+      );
+
+      // Convert dynamic map to Map<String, int>
+      return result.map((key, value) => MapEntry(key.toString(), value as int));
+    } on PlatformException catch (e) {
+      print('Error getting today block attempts from tracking: ${e.message}');
+      return {};
+    }
+  }
+
+  /// Get block attempts for a specific date from tracking storage
+  /// Date format: "YYYY-M-D" (e.g., "2026-1-5")
+  Future<Map<String, int>> getBlockAttemptsForDate(String date) async {
+    try {
+      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'getBlockAttemptsForDate',
+        {'date': date},
+      );
+
+      // Convert dynamic map to Map<String, int>
+      return result.map((key, value) => MapEntry(key.toString(), value as int));
+    } on PlatformException catch (e) {
+      print('Error getting block attempts for date: ${e.message}');
+      return {};
     }
   }
 

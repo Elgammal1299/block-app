@@ -189,6 +189,13 @@ class UsageTrackingService : Service() {
      */
     private fun trackAppUsage() {
         try {
+            // ✨ CHECK: If Accessibility Service is handling tracking, yield to it
+            // This prevents double counting and ensures we use the Source of Truth
+            if (prefs.getBoolean("is_accessibility_tracking_active", false)) {
+                Log.v(TAG, "Accessibility tracking active - yielding UsageTrackingService logic")
+                return
+            }
+
             val currentTime = System.currentTimeMillis()
 
             // Query usage events since last check
@@ -218,6 +225,10 @@ class UsageTrackingService : Service() {
                     UsageEvents.Event.ACTIVITY_RESUMED -> {
                         // App opened/resumed
                         currentSessions[packageName] = timestamp
+                        
+                        // ✨ NEW: Track session count (number of times app was opened)
+                        incrementSessionCount(packageName, timestamp)
+                        
                         Log.v(TAG, "App opened: $packageName at $timestamp")
                         eventsCount++
                     }
@@ -249,6 +260,32 @@ class UsageTrackingService : Service() {
 
         } catch (e: Exception) {
             Log.e(TAG, "Error tracking app usage: ${e.message}", e)
+        }
+        
+        // ✨ CRITICAL FIX: Save current sessions to SharedPreferences
+        // This allows UsageStatsUtil to calculate ongoing session durations
+        saveCurrentSessions()
+    }
+
+    /**
+     * ✨ NEW: Save current sessions to SharedPreferences
+     * This enables real-time calculation of ongoing app usage
+     */
+    private fun saveCurrentSessions() {
+        try {
+            val sessionsJson = JSONObject()
+            for ((packageName, startTime) in currentSessions) {
+                sessionsJson.put(packageName, startTime)
+            }
+            
+            prefs.edit()
+                .putString("current_sessions", sessionsJson.toString())
+                .apply()
+                
+            Log.v(TAG, "Saved ${currentSessions.size} current sessions to SharedPreferences")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving current sessions: ${e.message}", e)
         }
     }
 
@@ -360,6 +397,37 @@ class UsageTrackingService : Service() {
 
         } catch (e: Exception) {
             Log.e(TAG, "Error saving usage for date: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Increment session count for an app (tracks number of times app was opened)
+     */
+    private fun incrementSessionCount(packageName: String, timestamp: Long) {
+        try {
+            val calendar = Calendar.getInstance()
+            calendar.timeInMillis = timestamp
+            val dateKey = "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.MONTH) + 1}-${calendar.get(Calendar.DAY_OF_MONTH)}"
+            
+            val storageKey = "session_count_$dateKey"
+            
+            // Get existing session count data for this date
+            val existingDataJson = prefs.getString(storageKey, "{}")
+            val sessionData = JSONObject(existingDataJson ?: "{}")
+            
+            // Increment count for this app
+            val currentCount = sessionData.optInt(packageName, 0)
+            sessionData.put(packageName, currentCount + 1)
+            
+            // Save back to preferences
+            prefs.edit()
+                .putString(storageKey, sessionData.toString())
+                .apply()
+            
+            Log.v(TAG, "Incremented session count for $packageName: ${currentCount + 1} on $dateKey")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error incrementing session count: ${e.message}", e)
         }
     }
 

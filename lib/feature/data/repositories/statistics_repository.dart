@@ -55,7 +55,19 @@ class StatisticsRepository {
       for (final dateStr in pendingDates) {
         try {
           // Get usage data for this date from UsageTrackingService storage
-          final usageMap = await _platformService.getUsageForDateFromTracking(dateStr);
+          final usageMap = await _platformService.getUsageForDateFromTracking(
+            dateStr,
+          );
+
+          // ✨ NEW: Get session counts for this date
+          final sessionCounts = await _platformService.getSessionCountsForDate(
+            dateStr,
+          );
+
+          // ✨ NEW: Get block attempts for this date
+          final blockAttempts = await _platformService.getBlockAttemptsForDate(
+            dateStr,
+          );
 
           if (usageMap.isEmpty) {
             print('No data found for pending snapshot: $dateStr');
@@ -69,7 +81,8 @@ class StatisticsRepository {
           for (final entry in usageMap.entries) {
             String appName = entry.key;
             try {
-              appName = await _platformService.getAppName(entry.key) ?? entry.key;
+              appName =
+                  await _platformService.getAppName(entry.key) ?? entry.key;
             } catch (e) {
               appName = entry.key;
             }
@@ -80,6 +93,8 @@ class StatisticsRepository {
                 appName: appName,
                 totalTimeInMillis: entry.value,
                 date: date,
+                openCount: sessionCounts[entry.key] ?? 0, // ✨ NEW
+                blockAttempts: blockAttempts[entry.key] ?? 0, // ✨ NEW
               ),
             );
           }
@@ -87,9 +102,10 @@ class StatisticsRepository {
           // Save to database
           if (statsList.isNotEmpty) {
             await _databaseService.saveDailyUsageSnapshot(statsList, dateStr);
-            print('Saved pending snapshot for $dateStr (${statsList.length} apps)');
+            print(
+              'Saved pending snapshot for $dateStr (${statsList.length} apps)',
+            );
           }
-
         } catch (e) {
           print('Error processing pending snapshot for $dateStr: $e');
         }
@@ -97,7 +113,6 @@ class StatisticsRepository {
 
       // Clear pending snapshots after processing
       await _platformService.clearPendingSnapshotDates();
-
     } catch (e) {
       print('Error processing pending snapshots: $e');
     }
@@ -206,11 +221,24 @@ class StatisticsRepository {
 
     // For comparison, use the previous period of same duration
     final previousEndDate = startDate.subtract(const Duration(seconds: 1));
-    final previousStartDate = previousEndDate.subtract(Duration(days: duration - 1));
+    final previousStartDate = previousEndDate.subtract(
+      Duration(days: duration - 1),
+    );
 
     final previousPeriodStats = await _getUsageForPeriod(
-      DateTime(previousStartDate.year, previousStartDate.month, previousStartDate.day),
-      DateTime(previousEndDate.year, previousEndDate.month, previousEndDate.day, 23, 59, 59),
+      DateTime(
+        previousStartDate.year,
+        previousStartDate.month,
+        previousStartDate.day,
+      ),
+      DateTime(
+        previousEndDate.year,
+        previousEndDate.month,
+        previousEndDate.day,
+        23,
+        59,
+        59,
+      ),
     );
 
     final previousPeriod = PeriodStats(
@@ -223,7 +251,8 @@ class StatisticsRepository {
     );
 
     return ComparisonStats(
-      mode: ComparisonMode.todayVsYesterday, // Default mode, not used for custom periods
+      mode: ComparisonMode
+          .todayVsYesterday, // Default mode, not used for custom periods
       currentPeriod: currentPeriod,
       previousPeriod: previousPeriod,
     );
@@ -266,7 +295,10 @@ class StatisticsRepository {
       59,
       59,
     );
-    final yesterdayStats = await _getUsageForPeriod(yesterdayStartTime, yesterdayEndTime);
+    final yesterdayStats = await _getUsageForPeriod(
+      yesterdayStartTime,
+      yesterdayEndTime,
+    );
 
     // Get yesterday's block attempts from database (or use current as fallback)
     final yesterdayDateKey = _formatDate(yesterdayDate);
@@ -310,8 +342,16 @@ class StatisticsRepository {
       // Get usage stats directly from Native API
       final statsMap = await _platformService.getAppUsageStats(start, end);
 
+      // ✨ NEW: Get session counts for this period
+      final sessionCounts = await _platformService.getSessionCounts(start, end);
+
       // Filter out our own app (safety check)
-      statsMap.removeWhere((packageName, _) => packageName == 'com.example.block_app');
+      statsMap.removeWhere(
+        (packageName, _) => packageName == 'com.example.block_app',
+      );
+      sessionCounts.removeWhere(
+        (packageName, _) => packageName == 'com.example.block_app',
+      );
 
       // Initialize icons cache if needed
       await _initializeIconsCache();
@@ -333,6 +373,8 @@ class StatisticsRepository {
             totalTimeInMillis: entry.value,
             date: end,
             icon: _appIconsCache[entry.key],
+            openCount:
+                sessionCounts[entry.key] ?? 0, // ✨ NEW: Add session count
           ),
         );
       }
@@ -555,8 +597,19 @@ class StatisticsRepository {
       endDate,
     );
 
+    // ✨ NEW: Get session counts for this period
+    final sessionCounts = await _platformService.getSessionCounts(
+      startDate,
+      endDate,
+    );
+
     // Filter out our own app (safety check)
-    statsMap.removeWhere((packageName, _) => packageName == 'com.example.block_app');
+    statsMap.removeWhere(
+      (packageName, _) => packageName == 'com.example.block_app',
+    );
+    sessionCounts.removeWhere(
+      (packageName, _) => packageName == 'com.example.block_app',
+    );
 
     // Initialize icons cache if needed
     await _initializeIconsCache();
@@ -578,6 +631,7 @@ class StatisticsRepository {
           totalTimeInMillis: entry.value,
           date: endDate,
           icon: _appIconsCache[entry.key], // Add icon from cache
+          openCount: sessionCounts[entry.key] ?? 0, // ✨ NEW: Add session count
         ),
       );
     }
@@ -654,18 +708,44 @@ class StatisticsRepository {
     final startOfDay = DateTime(now.year, now.month, now.day);
 
     // Try to get data from UsageTrackingService first (more accurate, real-time)
-    Map<String, int> statsMap = await _platformService.getTodayUsageFromTrackingService();
+    Map<String, int> statsMap = await _platformService
+        .getTodayUsageFromTrackingService();
+
+    // ✨ Get session counts (number of times apps were opened)
+    Map<String, int> sessionCounts = await _platformService
+        .getTodaySessionCountsFromTracking();
+
+    // ✨ NEW: Get block attempts (number of times user tried to open blocked apps)
+    Map<String, int> blockAttempts = await _platformService
+        .getTodayBlockAttemptsFromTracking();
 
     // If UsageTrackingService data is empty or stale, fallback to UsageStats API
     if (statsMap.isEmpty) {
       print('Falling back to UsageStats API for today\'s data');
       statsMap = await _platformService.getAppUsageStats(startOfDay, now);
+
+      // ✨ Also fallback for session counts
+      sessionCounts = await _platformService.getSessionCounts(startOfDay, now);
+
+      // Block attempts don't have fallback (only tracked by AccessibilityService)
     } else {
-      print('Using real-time data from UsageTrackingService (${statsMap.length} apps)');
+      print(
+        'Using real-time data from UsageTrackingService (${statsMap.length} apps)',
+      );
+      print('Retrieved session counts for ${sessionCounts.length} apps');
+      print('Retrieved block attempts for ${blockAttempts.length} apps');
     }
 
     // Filter out our own app (safety check in case native filter missed it)
-    statsMap.removeWhere((packageName, _) => packageName == 'com.example.block_app');
+    statsMap.removeWhere(
+      (packageName, _) => packageName == 'com.example.block_app',
+    );
+    sessionCounts.removeWhere(
+      (packageName, _) => packageName == 'com.example.block_app',
+    );
+    blockAttempts.removeWhere(
+      (packageName, _) => packageName == 'com.example.block_app',
+    );
 
     // Initialize icons cache if needed
     await _initializeIconsCache();
@@ -689,6 +769,9 @@ class StatisticsRepository {
           totalTimeInMillis: entry.value,
           date: now,
           icon: _appIconsCache[entry.key],
+          openCount: sessionCounts[entry.key] ?? 0, // ✨ Add session count
+          blockAttempts:
+              blockAttempts[entry.key] ?? 0, // ✨ NEW: Add block attempts
         ),
       );
     }
@@ -747,7 +830,6 @@ class StatisticsRepository {
       ..sort((a, b) => b.totalTimeInMillis.compareTo(a.totalTimeInMillis));
     return sorted.take(limit).toList();
   }
-
 
   /// Format DateTime to YYYY-MM-DD
   String _formatDate(DateTime date) {

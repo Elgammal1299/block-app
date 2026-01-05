@@ -87,19 +87,99 @@ class AppUsageItem extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
 
-                // Percentage and limit info
+                // Percentage, open count, and limit info
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '${percentage.toStringAsFixed(1)}% من الإجمالي',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.textTheme.bodySmall?.color?.withOpacity(
-                          0.7,
-                        ),
-                        fontWeight: FontWeight.w500,
+                    // Left side: Percentage and Open Count
+                    Expanded(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          // Percentage badge
+                          Text(
+                            '${percentage.toStringAsFixed(1)}% من الإجمالي',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.textTheme.bodySmall?.color
+                                  ?.withOpacity(0.7),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          // ✨ Open count badge
+                          if (stats.openCount > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: appColor.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: appColor.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.open_in_new_rounded,
+                                    size: 12,
+                                    color: appColor,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${stats.openCount} مرة',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: appColor,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          // ✨ NEW: Block attempts badge (if app was blocked)
+                          if (stats.blockAttempts > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.red.shade300,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.block_rounded,
+                                    size: 12,
+                                    color: Colors.red.shade700,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${stats.blockAttempts} محاولة حظر',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: Colors.red.shade700,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
                       ),
                     ),
+                    // Right side: Usage limit (if exists)
                     if (hasLimit)
                       Container(
                         padding: const EdgeInsets.symmetric(

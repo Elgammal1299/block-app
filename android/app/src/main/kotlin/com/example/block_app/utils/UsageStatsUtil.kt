@@ -408,8 +408,8 @@ class UsageStatsUtil(private val activity: Activity) {
     }
 
     /**
-     * Get today's usage from UsageTrackingService (real-time data)
-     * This is more accurate than queryUsageStats as it's updated every 10 seconds
+     * Get today's usage from UsageTrackingService (real-time, more accurate)
+     * This is the primary data source for today's statistics
      */
     fun getTodayUsageFromTrackingService(): Map<String, Long> {
         try {
@@ -436,6 +436,24 @@ class UsageStatsUtil(private val activity: Activity) {
                 val usage = jsonObject.getLong(key)
                 if (usage > 0) {
                     result[key] = usage
+                }
+            }
+
+            // ✨ CRITICAL FIX: Add ongoing sessions (apps currently open)
+            // This fixes the bug where current app usage wasn't showing until app was closed
+            val currentSessionsJson = prefs.getString("current_sessions", "{}")
+            val currentSessions = org.json.JSONObject(currentSessionsJson ?: "{}")
+            val currentTime = System.currentTimeMillis()
+            
+            currentSessions.keys().forEach { packageName ->
+                val startTime = currentSessions.getLong(packageName)
+                val ongoingDuration = currentTime - startTime
+                
+                // Only add if duration is positive and reasonable (less than 24 hours)
+                if (ongoingDuration > 0 && ongoingDuration < 86400000) {
+                    val existingUsage = result[packageName] ?: 0L
+                    result[packageName] = existingUsage + ongoingDuration
+                    Log.v(TAG, "Added ongoing session for $packageName: ${ongoingDuration}ms")
                 }
             }
 
@@ -467,6 +485,155 @@ class UsageStatsUtil(private val activity: Activity) {
             return result
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing usage data for $date: ${e.message}")
+            return emptyMap()
+        }
+    }
+
+    /**
+     * Get session counts (number of times each app was opened) for a time range
+     * Returns a map of packageName -> count
+     */
+    fun getSessionCounts(startTime: Long, endTime: Long): Map<String, Int> {
+        val sessionCounts = mutableMapOf<String, Int>()
+        
+        try {
+            val usageStatsManager = activity.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+            if (usageStatsManager == null) {
+                Log.e(TAG, "UsageStatsManager is null")
+                return emptyMap()
+            }
+            
+            val events = usageStatsManager.queryEvents(startTime, endTime)
+            if (events == null) {
+                Log.w(TAG, "UsageEvents query returned null for session counts")
+                return emptyMap()
+            }
+            
+            while (events.hasNextEvent()) {
+                val event = android.app.usage.UsageEvents.Event()
+                events.getNextEvent(event)
+                
+                val packageName = event.packageName
+                
+                // Skip system packages
+                if (isSystemPackage(packageName)) {
+                    continue
+                }
+                
+                when (event.eventType) {
+                    android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND,
+                    android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED -> {
+                        // App opened - increment count
+                        val count = sessionCounts[packageName] ?: 0
+                        sessionCounts[packageName] = count + 1
+                    }
+                }
+            }
+            
+            Log.d(TAG, "Retrieved session counts for ${sessionCounts.size} apps")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting session counts: ${e.message}", e)
+        }
+        
+        return sessionCounts
+    }
+
+    /**
+     * Get today's session counts from UsageTrackingService (real-time, more accurate)
+     */
+    fun getTodaySessionCountsFromTracking(): Map<String, Int> {
+        try {
+            val prefs = activity.getSharedPreferences("usage_tracking", Context.MODE_PRIVATE)
+            val calendar = java.util.Calendar.getInstance()
+            val today = "${calendar.get(java.util.Calendar.YEAR)}-${calendar.get(java.util.Calendar.MONTH) + 1}-${calendar.get(java.util.Calendar.DAY_OF_MONTH)}"
+            
+            val storageKey = "session_count_$today"
+            val dataJson = prefs.getString(storageKey, "{}")
+            val jsonObject = org.json.JSONObject(dataJson ?: "{}")
+            val result = mutableMapOf<String, Int>()
+            
+            jsonObject.keys().forEach { key ->
+                result[key] = jsonObject.getInt(key)
+            }
+            
+            Log.d(TAG, "Retrieved ${result.size} session counts from UsageTrackingService for today")
+            return result
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting session counts from tracking: ${e.message}", e)
+            return emptyMap()
+        }
+    }
+
+    /**
+     * Get session counts for a specific date from UsageTrackingService storage
+     */
+    fun getSessionCountsForDate(date: String): Map<String, Int> {
+        try {
+            val prefs = activity.getSharedPreferences("usage_tracking", Context.MODE_PRIVATE)
+            val storageKey = "session_count_$date"
+            val dataJson = prefs.getString(storageKey, "{}")
+            val jsonObject = org.json.JSONObject(dataJson ?: "{}")
+            val result = mutableMapOf<String, Int>()
+            
+            jsonObject.keys().forEach { key ->
+                result[key] = jsonObject.getInt(key)
+            }
+            
+            return result
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing session counts for $date: ${e.message}")
+            return emptyMap()
+        }
+    }
+
+    /**
+     * Get today's block attempts from tracking (real-time)
+     * Returns map of packageName -> number of block attempts
+     */
+    fun getTodayBlockAttemptsFromTracking(): Map<String, Int> {
+        try {
+            val prefs = activity.getSharedPreferences("usage_tracking", Context.MODE_PRIVATE)
+            val calendar = java.util.Calendar.getInstance()
+            val today = "${calendar.get(java.util.Calendar.YEAR)}-${calendar.get(java.util.Calendar.MONTH) + 1}-${calendar.get(java.util.Calendar.DAY_OF_MONTH)}"
+            
+            val storageKey = "block_attempts_$today"
+            val dataJson = prefs.getString(storageKey, "{}")
+            val jsonObject = org.json.JSONObject(dataJson ?: "{}")
+            val result = mutableMapOf<String, Int>()
+            
+            jsonObject.keys().forEach { key ->
+                result[key] = jsonObject.getInt(key)
+            }
+            
+            Log.d(TAG, "Retrieved ${result.size} block attempts from tracking for today")
+            return result
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting block attempts from tracking: ${e.message}", e)
+            return emptyMap()
+        }
+    }
+
+    /**
+     * Get block attempts for a specific date from tracking storage
+     */
+    fun getBlockAttemptsForDate(date: String): Map<String, Int> {
+        try {
+            val prefs = activity.getSharedPreferences("usage_tracking", Context.MODE_PRIVATE)
+            val storageKey = "block_attempts_$date"
+            val dataJson = prefs.getString(storageKey, "{}")
+            val jsonObject = org.json.JSONObject(dataJson ?: "{}")
+            val result = mutableMapOf<String, Int>()
+            
+            jsonObject.keys().forEach { key ->
+                result[key] = jsonObject.getInt(key)
+            }
+            
+            return result
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing block attempts for $date: ${e.message}")
             return emptyMap()
         }
     }

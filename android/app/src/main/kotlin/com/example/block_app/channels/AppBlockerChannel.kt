@@ -467,6 +467,97 @@ class AppBlockerChannel(
                 }
             }
 
+            // Get session counts (number of times apps were opened)
+            "getSessionCounts" -> {
+                try {
+                    val startTime = call.argument<Long>("startTime")
+                    val endTime = call.argument<Long>("endTime")
+                    if (startTime != null && endTime != null) {
+                        Log.d("AppBlockerChannel", "Getting session counts from $startTime to $endTime")
+
+                        val sessionCounts = usageStatsUtil.getSessionCounts(startTime, endTime)
+
+                        Log.d("AppBlockerChannel", "Found ${sessionCounts.size} apps with session counts")
+                        result.success(sessionCounts)
+                    } else {
+                        result.error("ERROR", "Start or end time is null", null)
+                    }
+                } catch (e: Exception) {
+                    Log.e("AppBlockerChannel", "Failed to get session counts", e)
+                    result.error("ERROR", "Failed to get session counts: ${e.message}", null)
+                }
+            }
+
+            // Get today's session counts from UsageTrackingService
+            "getTodaySessionCountsFromTracking" -> {
+                try {
+                    Log.d("AppBlockerChannel", "Getting today's session counts from UsageTrackingService")
+
+                    val sessionCounts = usageStatsUtil.getTodaySessionCountsFromTracking()
+
+                    Log.d("AppBlockerChannel", "Retrieved ${sessionCounts.size} session counts from tracking")
+                    result.success(sessionCounts)
+                } catch (e: Exception) {
+                    Log.e("AppBlockerChannel", "Failed to get session counts from tracking", e)
+                    result.error("ERROR", "Failed to get session counts from tracking: ${e.message}", null)
+                }
+            }
+
+            // Get session counts for a specific date
+            "getSessionCountsForDate" -> {
+                try {
+                    val dateStr = call.argument<String>("date")
+                    if (dateStr != null) {
+                        Log.d("AppBlockerChannel", "Getting session counts for date: $dateStr")
+
+                        val sessionCounts = usageStatsUtil.getSessionCountsForDate(dateStr)
+
+                        Log.d("AppBlockerChannel", "Retrieved ${sessionCounts.size} session counts for $dateStr")
+                        result.success(sessionCounts)
+                    } else {
+                        result.error("ERROR", "Date string is null", null)
+                    }
+                } catch (e: Exception) {
+                    Log.e("AppBlockerChannel", "Failed to get session counts for date", e)
+                    result.error("ERROR", "Failed to get session counts for date: ${e.message}", null)
+                }
+            }
+
+            // Get today's block attempts from tracking
+            "getTodayBlockAttemptsFromTracking" -> {
+                try {
+                    Log.d("AppBlockerChannel", "Getting today's block attempts from tracking")
+
+                    val blockAttempts = usageStatsUtil.getTodayBlockAttemptsFromTracking()
+
+                    Log.d("AppBlockerChannel", "Retrieved ${blockAttempts.size} block attempts from tracking")
+                    result.success(blockAttempts)
+                } catch (e: Exception) {
+                    Log.e("AppBlockerChannel", "Failed to get block attempts from tracking", e)
+                    result.error("ERROR", "Failed to get block attempts from tracking: ${e.message}", null)
+                }
+            }
+
+            // Get block attempts for a specific date
+            "getBlockAttemptsForDate" -> {
+                try {
+                    val dateStr = call.argument<String>("date")
+                    if (dateStr != null) {
+                        Log.d("AppBlockerChannel", "Getting block attempts for date: $dateStr")
+
+                        val blockAttempts = usageStatsUtil.getBlockAttemptsForDate(dateStr)
+
+                        Log.d("AppBlockerChannel", "Retrieved ${blockAttempts.size} block attempts for $dateStr")
+                        result.success(blockAttempts)
+                    } else {
+                        result.error("ERROR", "Date string is null", null)
+                    }
+                } catch (e: Exception) {
+                    Log.e("AppBlockerChannel", "Failed to get block attempts for date", e)
+                    result.error("ERROR", "Failed to get block attempts for date: ${e.message}", null)
+                }
+            }
+
             // Get blocked apps JSON from native (for syncing block attempts)
             "getBlockedAppsJson" -> {
                 try {
