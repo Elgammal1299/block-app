@@ -419,14 +419,23 @@ class UsageStatsUtil(private val activity: Activity) {
 
             val storageKey = "daily_usage_$today"
             val dataJson = prefs.getString(storageKey, "{}")
-            val lastUpdate = prefs.getLong("last_update", 0L)
-
-            // Check if data is recent (updated within last 30 seconds)
-            val isRecent = (System.currentTimeMillis() - lastUpdate) < 30000
-
-            if (!isRecent) {
-                Log.w(TAG, "UsageTrackingService data is stale, falling back to UsageStats API")
-                return emptyMap()
+            
+            // Logic change: If accessibility tracking is active, TRUST the data.
+            // Accessibility Service updates "last_update" only on session end.
+            // Long sessions (>30s) caused data to be marked "stale" incorrectly.
+            // We calculate ongoing duration from "current_sessions" anyway, so data is never truly stale.
+            val isAccessibilityActive = prefs.getBoolean("is_accessibility_tracking_active", false)
+            
+            if (!isAccessibilityActive) {
+                // If accessibility is NOT active, check if legacy service is running
+                val lastUpdate = prefs.getLong("last_update", 0L)
+                val isRecent = (System.currentTimeMillis() - lastUpdate) < 30000
+                
+                if (!isRecent) {
+                    Log.w(TAG, "Legacy UsageTrackingService data is stale and Accessibility disabled. Fallback advised.")
+                    // Only return empty if we really have no recent data source
+                     return emptyMap()
+                }
             }
 
             val jsonObject = org.json.JSONObject(dataJson ?: "{}")
@@ -438,6 +447,8 @@ class UsageStatsUtil(private val activity: Activity) {
                     result[key] = usage
                 }
             }
+            
+            Log.d(TAG, "Base usage loaded from storage: ${result.size} apps")
 
             // ✨ CRITICAL FIX: Add ongoing sessions (apps currently open)
             // This fixes the bug where current app usage wasn't showing until app was closed
@@ -445,6 +456,7 @@ class UsageStatsUtil(private val activity: Activity) {
             val currentSessions = org.json.JSONObject(currentSessionsJson ?: "{}")
             val currentTime = System.currentTimeMillis()
             
+            var addedOngoing = 0
             currentSessions.keys().forEach { packageName ->
                 val startTime = currentSessions.getLong(packageName)
                 val ongoingDuration = currentTime - startTime
@@ -453,11 +465,12 @@ class UsageStatsUtil(private val activity: Activity) {
                 if (ongoingDuration > 0 && ongoingDuration < 86400000) {
                     val existingUsage = result[packageName] ?: 0L
                     result[packageName] = existingUsage + ongoingDuration
+                    addedOngoing++
                     Log.v(TAG, "Added ongoing session for $packageName: ${ongoingDuration}ms")
                 }
             }
 
-            Log.d(TAG, "Retrieved ${result.size} apps from UsageTrackingService (last update: ${System.currentTimeMillis() - lastUpdate}ms ago)")
+            Log.d(TAG, "Usage Source: ${if(isAccessibilityActive) "Accessibility" else "Legacy Service"}. Ongoing sessions added: $addedOngoing")
             return result
 
         } catch (e: Exception) {
@@ -609,10 +622,23 @@ class UsageStatsUtil(private val activity: Activity) {
             
             Log.d(TAG, "Retrieved ${result.size} block attempts from tracking for today")
             return result
-            
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting block attempts from tracking: ${e.message}", e)
+            Log.e(TAG, "Error getting today block attempts: ${e.message}")
             return emptyMap()
+        }
+    }
+
+    /**
+     * Clear all usage tracking data (Reset Statistics)
+     * Useful for debugging or starting fresh
+     */
+    fun clearAllUsageData() {
+        try {
+            val prefs = activity.getSharedPreferences("usage_tracking", Context.MODE_PRIVATE)
+            prefs.edit().clear().apply()
+            Log.d(TAG, "All usage tracking data cleared!")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error clearing usage data: ${e.message}")
         }
     }
 

@@ -114,16 +114,65 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             .apply()
     }
 
+    // Cache for default launcher package
+    private var defaultLauncherPackage: String? = null
+
+    // Logic to update Launcher package (call periodically or on demand)
+    private fun updateDefaultLauncher() {
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        val resolveInfo = packageManager.resolveActivity(intent, 0)
+        defaultLauncherPackage = resolveInfo?.activityInfo?.packageName
+    }
+
+    // Packages that should be ignored (Transparent/Interruption)
+    // Switching to these does NOT end the current session
+    private fun isInterruption(packageName: String): Boolean {
+        return packageName == "com.android.systemui" ||
+               packageName == "android" ||
+               packageName.contains("inputmethod") || // Keyboards
+               packageName == "com.google.android.inputmethod.latin" ||
+               packageName == "com.samsung.android.honeyboard" ||
+               packageName == "com.google.android.packageinstaller" ||
+               packageName == "com.android.permissioncontroller"
+    }
+
+    // Packages that stop usage but are not counted as usage themselves (e.g. Launcher)
+    private fun isStopper(packageName: String): Boolean {
+        if (defaultLauncherPackage == null) {
+            updateDefaultLauncher()
+        }
+        
+        return packageName == defaultLauncherPackage || 
+               packageName == "com.miui.home" || 
+               packageName == "com.sec.android.app.launcher" || 
+               packageName == "com.google.android.apps.nexuslauncher" ||
+               packageName.contains("launcher")
+    }
+
     private fun handleAppChange(newPackage: String) {
-        // If it's the same app, ignore (unless we want to track sub-activities, but usually package level is fine)
+        // If it's the same app, ignore
         if (newPackage == currentSessionPackage) {
             return
         }
 
-        // 1. Close previous session
+        // 1. Check if it's an INTERRUPTION (SystemUI, Keyboard, etc.)
+        // If so, IGNORE completely. Let the current session continue running.
+        if (isInterruption(newPackage)) {
+            Log.v(TAG, "Ignoring interruption package: $newPackage")
+            return
+        }
+
+        // 2. Whatever it is (App or Launcher), the previous session MUST end now
         endCurrentSession()
 
-        // 2. Start new session
+        // 3. Check if it's a STOPPER (Launcher/Home)
+        // If so, stop tracking. Don't start a new session.
+        if (isStopper(newPackage)) {
+            Log.d(TAG, "Stopper package detected (Home): $newPackage")
+            return
+        }
+
+        // 4. It's a valid new app -> Start new session
         startNewSession(newPackage)
     }
 
@@ -131,10 +180,9 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         currentSessionPackage = packageName
         sessionStartTime = System.currentTimeMillis()
         
-        // Track open count immediately
-        trackSessionOpen(packageName, sessionStartTime)
+        // Note: We do NOT increment open count here anymore (Waiting for Debounce validation)
         
-        // Save current session to shared prefs for real-time UI
+        // Save current session to shared prefs for real-time UI "Active Now" status
         saveCurrentSessionToPrefs(packageName, sessionStartTime)
         
         Log.d(TAG, "Started session for $packageName")
@@ -149,10 +197,18 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         val endTime = System.currentTimeMillis()
         val duration = endTime - startTime
 
-        if (duration > 0) { // Filter extremely short blips if needed, e.g. > 100ms
-            // Add to daily total
+        // ✨ DEBOUNCE LOGIC: Only count sessions longer than 3 seconds
+        // This filters out accidental clicks and system noise blips (e.g. 411ms sessions)
+        if (duration > 3000) { 
+            // Valid Session -> Save Usage
             updateDailyUsage(packageName, duration)
-            Log.d(TAG, "Ended session for $packageName: ${duration}ms")
+            
+            // Valid Session -> Increment Open Count
+            trackSessionOpen(packageName, startTime)
+            
+            Log.d(TAG, "Ended session for $packageName: ${duration}ms (Valid)")
+        } else {
+            Log.d(TAG, "Discarded short session for $packageName: ${duration}ms (< 3s)")
         }
 
         currentSessionPackage = null
@@ -229,57 +285,79 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         }
     }
 
+    private var lastEventTime = 0L
+    private val EVENT_DEBOUNCE_MS = 500L
+    private var lastCheckedPackage: String? = null
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            val packageName = event.packageName?.toString() ?: return
+        // 🥇 1. Strict Event Filtering: Only listen to WINDOW_STATE_CHANGED
+        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            return
+        }
 
-            // Don't block our own app
-            if (packageName == this.packageName) {
-                return
-            }
+        val currentTime = System.currentTimeMillis()
+        // 🥉 3. Debounce: Ignore events happening too fast (Noise reduction)
+        if (currentTime - lastEventTime < EVENT_DEBOUNCE_MS) {
+            return
+        }
+        lastEventTime = currentTime
 
-            // Check if there's a temporary unlock
-            if (isTemporarilyUnlocked()) {
-                return
-            }
+        val packageName = event.packageName?.toString() ?: return
 
-            // ✨ NEW: Track App Usage (Source of Truth)
-            // This is where we detect app changes and track usage time/open counts
-            // We ignore our own app and system UI usually, but handling everything gives best results
-            // We can filter specific system packages later if needed
-            handleAppChange(packageName)
+        // Don't block our own app
+        if (packageName == this.packageName) {
+            return
+        }
+        
+        // 🟢 4. Filter System Interruptions (Input Methods, Launchers, Permission Dialogs)
+        if (isInterruption(packageName) || isStopper(packageName)) {
+             // Handle stopper logic (End session if home)
+             if (isStopper(packageName)) {
+                 endCurrentSession()
+             }
+             return
+        }
 
-            // Check if app is in active focus session (priority check)
-            if (isInActiveFocusSession(packageName)) {
-                Log.d(TAG, "Blocking app (Focus Mode): $packageName")
-                incrementBlockAttempts(packageName)
-                // Show full-screen block overlay instead of returning to home screen
-                launchBlockOverlay(packageName)
-                return
-            }
+        // Check if there's a temporary unlock
+        if (isTemporarilyUnlocked()) {
+            return
+        }
+        
+        // 🥈 2. State Guard: If same package as last check (and active), minimal logic
+        val isSamePackage = (packageName == lastCheckedPackage)
+        lastCheckedPackage = packageName
 
-            // Check if app has reached its usage limit (priority check)
-            if (hasReachedUsageLimit(packageName)) {
-                Log.d(TAG, "Blocking app (Usage Limit): $packageName")
-                incrementBlockAttempts(packageName)
-                // Show full-screen block overlay instead of returning to home screen
-                launchBlockOverlay(packageName, "usage_limit_reached")
-                return
-            }
+        // ✨ NEW: Track App Usage (Source of Truth)
+        handleAppChange(packageName)
 
-            // Check if app should be blocked based on its schedules
-            if (shouldBlockApp(packageName)) {
-                Log.d(TAG, "Blocking app: $packageName")
+        // If it's the same package we just checked and authorized, skip heavy blocking checks
+        // UNLESS we are at a minute boundary (to catch schedule starts)
+        // But for now, let's rely on the Debounce to throttle this.
+        
+        // Check if app is in active focus session (priority check)
+        if (isInActiveFocusSession(packageName)) {
+            Log.d(TAG, "Blocking app (Focus Mode): $packageName")
+            incrementBlockAttempts(packageName)
+            launchBlockOverlay(packageName)
+            return
+        }
 
-                // Increment block attempts
-                incrementBlockAttempts(packageName)
+        // Check if app has reached its usage limit (priority check)
+        if (hasReachedUsageLimit(packageName)) {
+            Log.d(TAG, "Blocking app (Usage Limit): $packageName")
+            incrementBlockAttempts(packageName)
+            launchBlockOverlay(packageName)
+            return
+        }
 
-                // Launch block overlay activity and keep user on this screen
-                launchBlockOverlay(packageName)
-            }
+        // Check if app should be blocked by schedule (standard check)
+        if (shouldBlockApp(packageName)) {
+            Log.d(TAG, "Blocking app (Schedule): $packageName")
+            incrementBlockAttempts(packageName)
+            launchBlockOverlay(packageName)
+            return
         }
     }
-
     override fun onInterrupt() {
         Log.d(TAG, "Accessibility Service Interrupted")
     }
@@ -461,36 +539,28 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
                     val dailyLimitMinutes = limit.getInt("dailyLimitMinutes")
 
-                    // Get current app usage using UsageStatsManager
-                    val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as? android.app.usage.UsageStatsManager
-                    if (usageStatsManager == null) {
-                        Log.e(TAG, "UsageStatsManager is null")
-                        return false
-                    }
-
+                    // ✨ OPTIMIZATION: Read usage from OUR OWN tracking storage directly
+                    // This avoids slow UsageStatsManager calls and sync issues
+                    val trackingPrefs = getSharedPreferences("usage_tracking", Context.MODE_PRIVATE)
                     val calendar = Calendar.getInstance()
-                    calendar.set(Calendar.HOUR_OF_DAY, 0)
-                    calendar.set(Calendar.MINUTE, 0)
-                    calendar.set(Calendar.SECOND, 0)
-                    calendar.set(Calendar.MILLISECOND, 0)
-                    val startTime = calendar.timeInMillis
-                    val endTime = System.currentTimeMillis()
-
-                    val stats = usageStatsManager.queryUsageStats(
-                        android.app.usage.UsageStatsManager.INTERVAL_DAILY,
-                        startTime,
-                        endTime
-                    )
-
-                    // Find usage for this specific package
-                    val usageStat = stats?.find { it.packageName == packageName }
-                    val usedMinutes = if (usageStat != null) {
-                        (usageStat.totalTimeInForeground / 1000 / 60).toInt()
-                    } else {
-                        0
+                    val today = "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.MONTH) + 1}-${calendar.get(Calendar.DAY_OF_MONTH)}"
+                    val storageKey = "daily_usage_$today"
+                    
+                    val dataJson = trackingPrefs.getString(storageKey, "{}")
+                    val jsonObject = JSONObject(dataJson ?: "{}")
+                    
+                    // Get usage from stored map (milliseconds)
+                    val storedUsage = jsonObject.optLong(packageName, 0)
+                    
+                    // Add current session duration if it's the active package
+                    var totalUsageMillis = storedUsage
+                    if (packageName == currentSessionPackage && sessionStartTime > 0) {
+                        totalUsageMillis += (System.currentTimeMillis() - sessionStartTime)
                     }
+                    
+                    val usedMinutes = (totalUsageMillis / 1000 / 60).toInt()
 
-                    Log.d(TAG, "Usage limit check for $packageName: $usedMinutes/$dailyLimitMinutes minutes")
+                    Log.d(TAG, "Usage limit check for $packageName: $usedMinutes/$dailyLimitMinutes minutes (Source: Local Tracking)")
 
                     // Block if limit is reached
                     if (usedMinutes >= dailyLimitMinutes) {

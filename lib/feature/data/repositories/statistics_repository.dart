@@ -870,4 +870,14 @@ class StatisticsRepository {
         date.month == yesterday.month &&
         date.day == yesterday.day;
   }
+
+  /// Reset all statistics (Clear Native Storage + Local Database if needed)
+  Future<void> resetStatistics() async {
+    // 1. Clear Native Storage (Source of Truth for Today)
+    await _platformService.clearUsageData();
+
+    // 2. Clear Local Database (Source of Truth for History)
+    // For now, let's just clear native cache which fixes the immediate "stale/corruption" issue
+    // If user wants full wipe, we can add database clean call here
+  }
 }

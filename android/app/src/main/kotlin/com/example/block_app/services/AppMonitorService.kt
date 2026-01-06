@@ -10,7 +10,6 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.block_app.MainActivity
 import com.example.block_app.R
-import kotlinx.coroutines.*
 import org.json.JSONArray
 import java.util.*
 
@@ -29,13 +28,28 @@ class AppMonitorService : Service() {
         private const val KEY_LAST_RESET_DATE = "last_reset_date"
     }
 
-    private val serviceScope = CoroutineScope(Dispatchers.Default + Job())
-    private var monitoringJob: Job? = null
+    // ✨ ARCHITECTURE FIX: No more while(true) loops or timers!
+    // We use a BroadcastReceiver to listen for system TIME_TICK (fires exactly once per minute).
+    private val timeTickReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Intent.ACTION_TIME_TICK) {
+                // Determine if we need to do heavy checks
+                // Accessibility Service handles real-time blocking, so we assume it's active.
+                // We only handle schedule notification updates and daily resets here.
+                checkDailyReset()
+                checkSchedulesAndUpdate()
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "AppMonitorService created")
         createNotificationChannel()
+        
+        // Register receiver for minute updates
+        val filter = android.content.IntentFilter(Intent.ACTION_TIME_TICK)
+        registerReceiver(timeTickReceiver, filter)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -48,9 +62,10 @@ class AppMonitorService : Service() {
         // Save monitoring state
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putBoolean(KEY_MONITORING_ENABLED, true).apply()
-
-        // Start periodic monitoring
-        startMonitoring()
+        
+        // Initial check
+        checkDailyReset()
+        checkSchedulesAndUpdate()
 
         return START_STICKY
     }
@@ -67,11 +82,14 @@ class AppMonitorService : Service() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putBoolean(KEY_MONITORING_ENABLED, false).apply()
 
-        // Cancel monitoring
-        monitoringJob?.cancel()
-        serviceScope.cancel()
+        // Unregister receiver
+        try {
+            unregisterReceiver(timeTickReceiver)
+        } catch (e: Exception) {
+            // Ignore if not registered
+        }
     }
-
+    
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
         Log.d(TAG, "App task removed - scheduling service restart")
@@ -89,23 +107,7 @@ class AppMonitorService : Service() {
         Log.d(TAG, "Service restart scheduled")
     }
 
-    private fun startMonitoring() {
-        monitoringJob?.cancel()
-
-        monitoringJob = serviceScope.launch {
-            while (isActive) {
-                try {
-                    checkDailyReset()
-                    checkCurrentAppUsageLimit()  // Check current app first (more important)
-                    checkUsageLimits()
-                    checkSchedulesAndUpdate()
-                    delay(3000) // Check every 3 seconds for faster response
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error in monitoring loop: ${e.message}")
-                }
-            }
-        }
-    }
+    private var lastActiveSchedulesLog = -1
 
     private fun checkDailyReset() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -289,7 +291,6 @@ class AppMonitorService : Service() {
         val blockedAppsJson = prefs.getString(KEY_BLOCKED_APPS, null)
 
         if (schedulesJson == null || blockedAppsJson == null) {
-            Log.d(TAG, "No schedules or blocked apps found")
             return
         }
 
@@ -354,10 +355,12 @@ class AppMonitorService : Service() {
                 }
             }
 
-            Log.d(TAG, "Active schedules: $activeSchedulesCount at $currentHour:$currentMinute (Day: $dayOfWeek)")
-
-            // Update notification with current status
-            updateNotification(activeSchedulesCount)
+            // ✨ LOGGING OPTIMIZATION: Only log if status changed
+            if (activeSchedulesCount != lastActiveSchedulesLog) {
+                 Log.d(TAG, "Active schedules changed: $activeSchedulesCount at $currentHour:$currentMinute (Day: $dayOfWeek)")
+                 lastActiveSchedulesLog = activeSchedulesCount
+                 updateNotification(activeSchedulesCount)
+            }
 
         } catch (e: Exception) {
             Log.e(TAG, "Error checking schedules: ${e.message}")

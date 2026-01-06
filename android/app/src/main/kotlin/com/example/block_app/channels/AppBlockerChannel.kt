@@ -571,6 +571,17 @@ class AppBlockerChannel(
                 }
             }
 
+            // ✨ NEW: Reset stats command
+            "clearUsageData" -> {
+                try {
+                    usageStatsUtil.clearAllUsageData()
+                    result.success(true)
+                } catch (e: Exception) {
+                     Log.e("AppBlockerChannel", "Failed to clear usage data", e)
+                     result.error("ERROR", "Failed to clear usage data: ${e.message}", null)
+                }
+            }
+
             else -> {
                 result.notImplemented()
             }

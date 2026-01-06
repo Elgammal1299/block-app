@@ -441,6 +441,20 @@ class PlatformChannelService {
     }
   }
 
+  // ========== Reset Statistics ==========
+
+  /// Clear all usage statistics from Native storage
+  /// This helps in resetting the data if it gets corrupted or for debugging
+  Future<bool> clearUsageData() async {
+    try {
+      final bool result = await _channel.invokeMethod('clearUsageData') as bool;
+      return result;
+    } on PlatformException catch (e) {
+      print('Error clearing usage data: ${e.message}');
+      return false;
+    }
+  }
+
   // ========== Focus Mode Methods ==========
 
   Future<void> startFocusSession({

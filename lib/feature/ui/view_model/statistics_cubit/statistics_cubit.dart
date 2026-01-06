@@ -27,10 +27,8 @@ class StatisticsCubit extends Cubit<StatisticsState> {
   DateTime? _lastLoadTime;
   static const _minRefreshInterval = Duration(seconds: 5);
 
-  StatisticsCubit(
-    this._statisticsRepository,
-    this._platformService,
-  ) : super(StatisticsInitial());
+  StatisticsCubit(this._statisticsRepository, this._platformService)
+    : super(StatisticsInitial());
 
   @override
   Future<void> close() {
@@ -157,4 +155,16 @@ class StatisticsCubit extends Cubit<StatisticsState> {
 
   /// Get current comparison mode
   ComparisonMode get currentMode => _currentMode;
+
+  /// Reset all statistics data (Debug feature to fix corrupted stats)
+  Future<void> resetStatistics() async {
+    try {
+      emit(StatisticsLoading());
+      await _statisticsRepository.resetStatistics();
+      // Reload dashboard after reset
+      await loadDashboard(forceRefresh: true);
+    } catch (e) {
+      emit(StatisticsError('Failed to reset statistics: $e'));
+    }
+  }
 }

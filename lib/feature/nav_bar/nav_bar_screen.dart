@@ -1,4 +1,3 @@
-import 'package:animated_notch_bottom_bar/animated_notch_bottom_bar/animated_notch_bottom_bar.dart';
 import 'package:flutter/material.dart';
 import '../ui/view/screens/home_screen.dart';
 import '../ui/view/screens/statistics_dashboard_screen.dart';
@@ -14,8 +13,8 @@ class NabBarScreen extends StatefulWidget {
 
 class _NabBarScreenState extends State<NabBarScreen> {
   // Controllers
-  late final NotchBottomBarController _controller;
   late final PageController _pageController;
+  int _currentIndex = 0;
 
   // Screens
   final List<Widget> _screens = const [
@@ -28,7 +27,6 @@ class _NabBarScreenState extends State<NabBarScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = NotchBottomBarController(index: 0);
     _pageController = PageController(initialPage: 0);
   }
 
@@ -38,62 +36,64 @@ class _NabBarScreenState extends State<NabBarScreen> {
     super.dispose();
   }
 
+  void _onItemTapped(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutQuad,
+    );
+  }
+
+  void _onPageChanged(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Get theme colors
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    // Colors based on theme
-    final inactiveColor = isDark ? Colors.grey.shade600 : Colors.grey.shade500;
-    final primaryColor = theme.colorScheme.primary;
 
     return Scaffold(
-      extendBody: true,
       body: PageView(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
+        onPageChanged: _onPageChanged,
         children: _screens,
-        onPageChanged: (index) {
-          // تحديث حالة الـ NotchBottomBar
-          _controller.index = index;
-        },
       ),
-
-      bottomNavigationBar: AnimatedNotchBottomBar(
-        shadowElevation: 0,
-        elevation: 0,
-        notchBottomBarController: _controller,
-        color: theme.bottomNavigationBarTheme.backgroundColor ?? theme.colorScheme.surface,
-        notchColor: theme.bottomNavigationBarTheme.backgroundColor ?? theme.colorScheme.surface,
-        bottomBarItems: [
-          BottomBarItem(
-            inActiveItem: Icon(Icons.home_rounded, color: inactiveColor),
-            activeItem: Icon(Icons.home_rounded, color: primaryColor),
-            itemLabel: 'الرئيسية',
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: _onItemTapped,
+        // Using a slight elevation and background color for a nice look
+        elevation: 3,
+        backgroundColor: theme.colorScheme.surface,
+        indicatorColor: theme.colorScheme.primaryContainer,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'الرئيسية',
           ),
-          BottomBarItem(
-            inActiveItem: Icon(Icons.block, color: inactiveColor),
-            activeItem: Icon(Icons.block, color: Colors.red.shade400),
-            itemLabel: 'التحكم',
+          NavigationDestination(
+            icon: Icon(Icons.block_outlined),
+            selectedIcon: Icon(Icons.block),
+            label: 'التحكم',
           ),
-          BottomBarItem(
-            inActiveItem: Icon(Icons.self_improvement, color: inactiveColor),
-            activeItem: Icon(Icons.self_improvement, color: primaryColor),
-            itemLabel: 'التركيز',
+          NavigationDestination(
+            icon: Icon(Icons.self_improvement_outlined),
+            selectedIcon: Icon(Icons.self_improvement),
+            label: 'التركيز',
           ),
-          BottomBarItem(
-            inActiveItem: Icon(Icons.bar_chart, color: inactiveColor),
-            activeItem: Icon(Icons.bar_chart, color: Colors.purple.shade400),
-            itemLabel: 'الإحصائيات',
+          NavigationDestination(
+            icon: Icon(Icons.bar_chart_outlined),
+            selectedIcon: Icon(Icons.bar_chart),
+            label: 'الإحصائيات',
           ),
         ],
-        onTap: (index) {
-          // تحديث الصفحة المعروضة عند الضغط على أيقونة
-          _pageController.jumpToPage(index);
-        },
-        kIconSize: 24,
-        kBottomRadius: 28,
       ),
     );
   }

@@ -157,7 +157,8 @@ class _StatisticsDashboardScreenState extends State<StatisticsDashboardScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 sliver: SliverToBoxAdapter(
                   child: BlockAttemptsCard(
-                    totalAttempts: state.comparisonStats.currentPeriod.totalBlockAttempts,
+                    totalAttempts:
+                        state.comparisonStats.currentPeriod.totalBlockAttempts,
                     periodLabel: _getBlockAttemptsLabel(_selectedPeriod),
                     margin: EdgeInsets.zero,
                   ),
