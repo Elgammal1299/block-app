@@ -17,15 +17,8 @@ import '../../view_model/focus_session_cubit/focus_session_cubit.dart';
 import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/services/platform_channel_service.dart';
 import '../../../../core/router/app_routes.dart';
-import '../widgets/home/simple_daily_goal_card.dart';
-import '../widgets/home/achievements_banner.dart';
-import '../widgets/home/smart_suggestion_card.dart';
-import '../widgets/home/active_schedule_preview.dart';
-import '../widgets/home/custom_mode_card.dart';
-import '../widgets/home/usage_limit_card.dart';
-import '../widgets/home/preset_mode_card.dart';
-import '../widgets/home/saved_custom_modes_section.dart';
-import '../widgets/focus_mode_card.dart';
+import '../widgets/home/home_header.dart';
+import '../widgets/home/home_schedule_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -38,7 +31,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Start monitoring service and sync data automatically
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeService();
       _loadData();
@@ -59,14 +51,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _initializeService() async {
     try {
-      // Sync schedules and blocked apps to Native
       await _syncDataToNative();
-
-      // Start monitoring service
       final platformService = getIt<PlatformChannelService>();
       await platformService.startMonitoringService();
-
-      // Start usage tracking service for accurate statistics
       await platformService.startUsageTrackingService();
     } catch (e) {
       print('Error initializing service: $e');
@@ -79,7 +66,6 @@ class _HomeScreenState extends State<HomeScreen> {
       final blockedAppsCubit = getIt<BlockedAppsCubit>();
       final platformService = getIt<PlatformChannelService>();
 
-      // Ensure data is loaded at least once before syncing
       if (scheduleCubit.state is ScheduleInitial) {
         await scheduleCubit.loadSchedules();
       }
@@ -87,21 +73,18 @@ class _HomeScreenState extends State<HomeScreen> {
         await blockedAppsCubit.loadBlockedApps();
       }
 
-      // Sync schedules
       final scheduleState = scheduleCubit.state;
       if (scheduleState is ScheduleLoaded) {
-        final schedules = scheduleState.schedules;
-        await platformService.updateSchedules(schedules);
-        print('Synced ${schedules.length} schedules to Native');
+        await platformService.updateSchedules(scheduleState.schedules);
       }
 
-      // Sync blocked apps
       final blockedAppsState = blockedAppsCubit.state;
       if (blockedAppsState is BlockedAppsLoaded) {
         final blockedApps = blockedAppsState.blockedApps;
-        final appsJson = jsonEncode(blockedApps.map((app) => app.toJson()).toList());
+        final appsJson = jsonEncode(
+          blockedApps.map((app) => app.toJson()).toList(),
+        );
         await platformService.updateBlockedAppsJson(appsJson);
-        print('Synced ${blockedApps.length} blocked apps to Native');
       }
     } catch (e) {
       print('Error syncing data to Native: $e');
@@ -110,89 +93,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
-
     return MultiBlocProvider(
       providers: [
-        BlocProvider(
-          create: (_) => getIt<DailyGoalCubit>(),
-        ),
-        BlocProvider(
-          create: (_) => getIt<GamificationCubit>(),
-        ),
-        BlocProvider(
-          create: (_) => getIt<SmartSuggestionsCubit>(),
-        ),
+        BlocProvider(create: (_) => getIt<DailyGoalCubit>()),
+        BlocProvider(create: (_) => getIt<GamificationCubit>()),
+        BlocProvider(create: (_) => getIt<SmartSuggestionsCubit>()),
+        BlocProvider.value(value: getIt<FocusSessionCubit>()),
+        BlocProvider.value(value: getIt<ScheduleCubit>()),
         BlocProvider.value(
-          value: getIt<FocusSessionCubit>(),
-        ),
-        BlocProvider.value(
-          value: getIt<ScheduleCubit>(),
-        ),
+          value: getIt<BlockedAppsCubit>(),
+        ), // Ensure BlockedAppsCubit is provided for calculations
       ],
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(localizations.appName),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: () {
-                Scaffold.of(context).openEndDrawer();
-              },
-            ),
-          ],
-        ),
-        endDrawer: _buildSettingsDrawer(context, localizations),
-        body: RefreshIndicator(
-          onRefresh: _refreshData,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 1. Quick Block Section
-                _buildQuickBlockSection(context),
-                const SizedBox(height: 20),
-
-                // 2. Custom Mode Card (جديد)
-                const CustomModeCard(),
-                const SizedBox(height: 20),
-
-                // 3. Usage Limit Card (جديد)
-                const UsageLimitCard(),
-                const SizedBox(height: 20),
-
-                // 4. Sleep Mode Preset (جديد)
-                const PresetModeCard(modeType: FocusModeType.sleep),
-                const SizedBox(height: 20),
-
-                // 5. Work Mode Preset (جديد)
-                const PresetModeCard(modeType: FocusModeType.work),
-                const SizedBox(height: 20),
-
-                // 6. Saved Custom Modes Section (جديد)
-                const SavedCustomModesSection(),
-                const SizedBox(height: 20),
-
-                // 7. Daily Goal Card
-                const SimpleDailyGoalCard(),
-                const SizedBox(height: 20),
-
-                // 8. Smart Suggestion
-                const SmartSuggestionCard(),
-                const SizedBox(height: 20),
-
-                // 9. Achievements
-                _buildSectionHeader(context, 'الإنجازات', Icons.emoji_events),
-                const SizedBox(height: 16),
-                const AchievementsBanner(),
-                const SizedBox(height: 20),
-
-                // 10. Active Schedule Preview
-                const ActiveSchedulePreview(),
-                const SizedBox(height: 20),
-              ],
+        backgroundColor: const Color(0xFFF2F6FA),
+        body: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: _refreshData,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
+              child: Column(
+                children: [
+                  const HomeHeader(),
+                  const SizedBox(height: 16),
+                  _buildWhiteQuickBlockCard(context),
+                  const SizedBox(height: 24),
+                  _buildSectionTitleRow(
+                    context,
+                    title: 'الجداول',
+                    actionLabel: '+ أضف',
+                    onAction: () =>
+                        Navigator.of(context).pushNamed(AppRoutes.schedules),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildSchedulesList(context),
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
           ),
         ),
@@ -200,214 +139,224 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _refreshData() async {
-    await Future.wait([
-      getIt<DailyGoalCubit>().loadDailyGoal(),
-      getIt<GamificationCubit>().loadUserProgress(),
-      getIt<SmartSuggestionsCubit>().generateSuggestions(),
-      getIt<BlockedAppsCubit>().loadBlockedApps(),
-      getIt<ScheduleCubit>().loadSchedules(),
-    ]);
-  }
-
-  Widget _buildQuickBlockSection(BuildContext context) {
-    final theme = Theme.of(context);
-
+  Widget _buildWhiteQuickBlockCard(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary, // Solid primary blue
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-          width: 1,
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(
-                Icons.flash_on,
-                color: Colors.white,
-                size: 24,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Text(
+                      '0',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.block, size: 14, color: Colors.grey[600]),
+                  ],
+                ),
               ),
-              const SizedBox(width: 8),
-              Text(
+              const Text(
                 'الحظر السريع',
                 style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            'ابدأ الحظر فورا بضغطة واحدة.',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 14,
+          const Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              'ابدأ الحظر فورًا بضغطة واحدة.',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
+            height: 56,
             child: ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pushNamed(AppRoutes.quickBlockSettings);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.blue[600],
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: const Color(0xFF1877F2),
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(28),
                 ),
-                elevation: 2,
+                elevation: 0,
               ),
-              child: Row(
+              child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.play_arrow, size: 20),
-                  const SizedBox(width: 8),
                   Text(
                     'هيا نبدأ',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
+                  SizedBox(width: 8),
+                  Icon(Icons.play_arrow_rounded),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(
-                Icons.timer,
-                color: Colors.white.withOpacity(0.8),
-                size: 16,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                'المؤقت & طريقة البومودورو',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
-                  fontSize: 12,
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(Icons.diamond, color: Colors.orange[700], size: 20),
+                const Text(
+                  'المؤقت & طريقة البومودورو',
+                  style: TextStyle(
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              const Spacer(),
-              Icon(
-                Icons.diamond,
-                color: Colors.white.withOpacity(0.8),
-                size: 16,
-              ),
-            ],
+                const Icon(Icons.timer_outlined, color: Colors.black54),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
-    final theme = Theme.of(context);
+  Widget _buildSectionTitleRow(
+    BuildContext context, {
+    required String title,
+    required String actionLabel,
+    required VoidCallback onAction,
+  }) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Icon(
-          icon,
-          size: 20,
-          color: theme.colorScheme.primary,
+        TextButton.icon(
+          onPressed: onAction,
+          icon: const Icon(Icons.add, size: 20),
+          label: Text(
+            actionLabel,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          style: TextButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.blue,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          ),
         ),
-        const SizedBox(width: 8),
         Text(
           title,
-          style: theme.textTheme.titleLarge?.copyWith(
+          style: const TextStyle(
+            fontSize: 20,
             fontWeight: FontWeight.bold,
+            color: Colors.black87,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSettingsDrawer(BuildContext context, AppLocalizations localizations) {
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            DrawerHeader(
-              margin: EdgeInsets.zero,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    localizations.appName,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'الإعدادات السريعة',
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                ],
+  Widget _buildSchedulesList(BuildContext context) {
+    return BlocBuilder<ScheduleCubit, ScheduleState>(
+      builder: (context, scheduleState) {
+        if (scheduleState is ScheduleLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final schedules = (scheduleState is ScheduleLoaded)
+            ? scheduleState.schedules
+            : [];
+
+        if (schedules.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(30),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Center(
+              child: Text(
+                'لا توجد جداول حاليا. أضف جدول جديد!',
+                style: TextStyle(color: Colors.grey),
               ),
             ),
-            // Language
-            BlocBuilder<LocaleCubit, LocaleState>(
-              bloc: getIt<LocaleCubit>(),
-              builder: (context, state) {
-                final currentLocale =
-                    state is LocaleLoaded ? state.locale.languageCode : 'en';
-                final isArabic = currentLocale == 'ar';
-                return ListTile(
-                  leading: const Icon(Icons.language),
-                  title: const Text('اللغة'),
-                  subtitle: Text(isArabic ? 'العربية' : 'English'),
+          );
+        }
+
+        return BlocBuilder<BlockedAppsCubit, BlockedAppsState>(
+          builder: (context, blockedAppsState) {
+            final blockedApps = (blockedAppsState is BlockedAppsLoaded)
+                ? blockedAppsState.blockedApps
+                : [];
+
+            return ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: schedules.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              itemBuilder: (context, index) {
+                final schedule = schedules[index];
+
+                // Calculate apps count for this schedule
+                final appCount = blockedApps
+                    .where((app) => app.scheduleIds.contains(schedule.id))
+                    .length;
+
+                return HomeScheduleCard(
+                  schedule: schedule,
+                  appCount: appCount,
                   onTap: () {
-                    getIt<LocaleCubit>().toggleLocale();
+                    Navigator.of(context).pushNamed(AppRoutes.schedules);
                   },
                 );
               },
-            ),
-            // Theme
-            BlocBuilder<ThemeCubit, ThemeState>(
-              bloc: getIt<ThemeCubit>(),
-              builder: (context, state) {
-                final isDarkMode = state is ThemeLoaded ? state.isDarkMode : false;
-                return SwitchListTile(
-                  secondary: const Icon(Icons.brightness_6),
-                  title: const Text('الوضع الليلي'),
-                  value: isDarkMode,
-                  onChanged: (_) {
-                    getIt<ThemeCubit>().toggleTheme();
-                  },
-                );
-              },
-            ),
-            const Divider(),
-            // Block screen style
-            ListTile(
-              leading: const Icon(Icons.phone_android),
-              title: const Text('شكل شاشة الحظر'),
-              subtitle: const Text('اختر الشكل الذي تريده عند حظر التطبيقات'),
-              onTap: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pushNamed(AppRoutes.blockScreenStyle);
-              },
-            ),
-          ],
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
+  }
+
+  Future<void> _refreshData() async {
+    await Future.wait([
+      getIt<DailyGoalCubit>().loadDailyGoal(),
+      getIt<BlockedAppsCubit>().loadBlockedApps(),
+      getIt<ScheduleCubit>().loadSchedules(),
+    ]);
   }
 }

@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 
 /// Enum for custom mode block types
 enum CustomModeBlockType {
-  fullBlock,    // حظر كامل لمدة معينة
-  timeBased,    // حظر في أوقات وأيام معينة
-  usageLimit,   // حد للاستخدام اليومي
+  fullBlock, // حظر كامل لمدة معينة
+  timeBased, // حظر في أوقات وأيام معينة
+  usageLimit, // حد للاستخدام اليومي
 }
 
 /// Model for custom focus modes created by users
 class CustomFocusMode {
   final String id; // UUID
   final String name; // اسم مخصص من المستخدم
-  final IconData icon; // أيقونة (نستخدم default icon حالياً)
+  final IconData icon; // أيقونة
   final CustomModeBlockType blockType; // نوع الحظر
   final List<String> blockedPackages; // قائمة التطبيقات المحظورة
 
@@ -81,7 +81,7 @@ class CustomFocusMode {
     return {
       'id': id,
       'name': name,
-      'iconCodePoint': icon.codePoint, // حفظ كـ codePoint
+      'iconCodePoint': icon.codePoint,
       'iconFontFamily': icon.fontFamily,
       'blockType': blockType.name,
       'blockedPackages': blockedPackages,
@@ -104,9 +104,9 @@ class CustomFocusMode {
     return CustomFocusMode(
       id: json['id'] as String,
       name: json['name'] as String,
-      icon: IconData(
+      icon: _getIconFromStorage(
         json['iconCodePoint'] as int,
-        fontFamily: json['iconFontFamily'] as String?,
+        json['iconFontFamily'] as String?,
       ),
       blockType: CustomModeBlockType.values.firstWhere(
         (e) => e.name == json['blockType'],
@@ -141,6 +141,35 @@ class CustomFocusMode {
     );
   }
 
+  /// Helper to get IconData without breaking the build.
+  /// Flutter's icon tree shaker fails if it sees a non-constant IconData constructor.
+  static IconData _getIconFromStorage(int codePoint, String? fontFamily) {
+    if (fontFamily == 'MaterialIcons' || fontFamily == null) {
+      switch (codePoint) {
+        case 0xe1ad:
+          return Icons.work;
+        case 0xe44e:
+          return Icons.nightlight_round;
+        case 0xeaf3:
+          return Icons.school;
+        case 0xe0b8:
+          return Icons.block;
+        case 0xe03b:
+          return Icons.access_time;
+        case 0xe51f:
+          return Icons.timer;
+        case 0xe84f:
+          return Icons.category;
+        case 0xef71:
+          return Icons.star;
+      }
+    }
+
+    // Default fallback icon - DO NOT use the IconData constructor here
+    // to avoid build errors.
+    return Icons.star;
+  }
+
   /// Encode to String for SharedPreferences
   String encode() => jsonEncode(toJson());
 
@@ -168,7 +197,7 @@ class CustomFocusMode {
     final hours = minutes ~/ 60;
     final mins = minutes % 60;
     if (mins == 0) {
-      return '$hours ساعة${hours > 1 ? '' : ''}';
+      return '$hours ساعة';
     }
     return '$hours ساعة $mins دقيقة';
   }
