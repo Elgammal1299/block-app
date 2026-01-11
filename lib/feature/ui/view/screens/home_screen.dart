@@ -6,19 +6,18 @@ import '../../view_model/blocked_apps_cubit/blocked_apps_cubit.dart';
 import '../../view_model/blocked_apps_cubit/blocked_apps_state.dart';
 import '../../view_model/schedule_cubit/schedule_cubit.dart';
 import '../../view_model/schedule_cubit/schedule_state.dart';
-import '../../view_model/theme_cubit/theme_cubit.dart';
-import '../../view_model/theme_cubit/theme_state.dart';
-import '../../view_model/locale_cubit/locale_cubit.dart';
-import '../../view_model/locale_cubit/locale_state.dart';
+// import '../../view_model/theme_cubit/theme_cubit.dart';
+// import '../../view_model/theme_cubit/theme_state.dart';
+// import '../../view_model/locale_cubit/locale_cubit.dart';
+// import '../../view_model/locale_cubit/locale_state.dart';
+// import '../../../../core/localization/app_localizations.dart';
 import '../../view_model/daily_goal_cubit/daily_goal_cubit.dart';
 import '../../view_model/gamification_cubit/gamification_cubit.dart';
 import '../../view_model/suggestions_cubit/suggestions_cubit.dart';
 import '../../view_model/focus_session_cubit/focus_session_cubit.dart';
-import '../../../../core/localization/app_localizations.dart';
 import '../../../../core/services/platform_channel_service.dart';
 import '../../../../core/router/app_routes.dart';
 import '../widgets/home/home_header.dart';
-import '../widgets/home/home_schedule_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -120,15 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 16),
                   _buildWhiteQuickBlockCard(context),
                   const SizedBox(height: 24),
-                  _buildSectionTitleRow(
-                    context,
-                    title: 'الجداول',
-                    actionLabel: '+ أضف',
-                    onAction: () =>
-                        Navigator.of(context).pushNamed(AppRoutes.schedules),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSchedulesList(context),
+                  _buildDualActionCard(context),
                   const SizedBox(height: 40),
                 ],
               ),
@@ -254,101 +245,109 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSectionTitleRow(
-    BuildContext context, {
-    required String title,
-    required String actionLabel,
-    required VoidCallback onAction,
-  }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        TextButton.icon(
-          onPressed: onAction,
-          icon: const Icon(Icons.add, size: 20),
-          label: Text(
-            actionLabel,
-            style: const TextStyle(fontWeight: FontWeight.bold),
+  Widget _buildDualActionCard(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
           ),
-          style: TextButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.blue,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          ),
-        ),
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSchedulesList(BuildContext context) {
-    return BlocBuilder<ScheduleCubit, ScheduleState>(
-      builder: (context, scheduleState) {
-        if (scheduleState is ScheduleLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final schedules = (scheduleState is ScheduleLoaded)
-            ? scheduleState.schedules
-            : [];
-
-        if (schedules.isEmpty) {
-          return Container(
-            padding: const EdgeInsets.all(30),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Center(
-              child: Text(
-                'لا توجد جداول حاليا. أضف جدول جديد!',
-                style: TextStyle(color: Colors.grey),
+        ],
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Expanded(
+              child: InkWell(
+                onTap: () =>
+                    Navigator.of(context).pushNamed(AppRoutes.schedules),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  bottomLeft: Radius.circular(24),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1877F2).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.calendar_month_rounded,
+                          color: Color(0xFF1877F2),
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'جدول جديد',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-          );
-        }
-
-        return BlocBuilder<BlockedAppsCubit, BlockedAppsState>(
-          builder: (context, blockedAppsState) {
-            final blockedApps = (blockedAppsState is BlockedAppsLoaded)
-                ? blockedAppsState.blockedApps
-                : [];
-
-            return ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: schedules.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                final schedule = schedules[index];
-
-                // Calculate apps count for this schedule
-                final appCount = blockedApps
-                    .where((app) => app.scheduleIds.contains(schedule.id))
-                    .length;
-
-                return HomeScheduleCard(
-                  schedule: schedule,
-                  appCount: appCount,
-                  onTap: () {
-                    Navigator.of(context).pushNamed(AppRoutes.schedules);
-                  },
-                );
-              },
-            );
-          },
-        );
-      },
+            VerticalDivider(
+              width: 1,
+              thickness: 1,
+              indent: 20,
+              endIndent: 20,
+              color: Colors.grey[200],
+            ),
+            Expanded(
+              child: InkWell(
+                onTap: () => Navigator.of(
+                  context,
+                ).pushNamed(AppRoutes.usageLimitSelection),
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(24),
+                  bottomRight: Radius.circular(24),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[600]!.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(
+                          Icons.timer_rounded,
+                          color: Colors.orange[600],
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'حد التطبيق',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

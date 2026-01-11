@@ -116,9 +116,12 @@ class UsageLimitCubit extends Cubit<UsageLimitState> {
     if (state is UsageLimitLoaded) {
       final currentState = state as UsageLimitLoaded;
       try {
-        return currentState.limits.firstWhere(
+        final result = currentState.limits.firstWhere(
           (l) => l.packageName == packageName,
+          orElse: () =>
+              AppUsageLimit(packageName: '', appName: '', dailyLimitMinutes: 0),
         );
+        return result.packageName.isEmpty ? null : result;
       } catch (e) {
         return null;
       }

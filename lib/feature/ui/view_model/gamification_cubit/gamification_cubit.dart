@@ -56,6 +56,11 @@ class GamificationCubit extends Cubit<GamificationState> {
 
       final unlockedAchievement = newProgress.achievements.firstWhere(
         (a) => a.type == achievementType,
+        orElse: () => Achievement.fromType(
+          achievementType,
+          isUnlocked: true,
+          unlockedAt: DateTime.now(),
+        ),
       );
 
       emit(AchievementUnlocked(unlockedAchievement, newProgress));

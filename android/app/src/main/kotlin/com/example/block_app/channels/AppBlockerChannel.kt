@@ -15,6 +15,9 @@ import com.example.block_app.utils.WorkManagerUtil
 import com.example.block_app.utils.UsageDataCleaner
 import com.example.block_app.services.AppMonitorService
 import com.example.block_app.services.UsageTrackingService
+import kotlinx.coroutines.*
+import android.os.Handler
+import android.os.Looper
 
 class AppBlockerChannel(
     private val activity: Activity,
@@ -25,6 +28,9 @@ class AppBlockerChannel(
     private val permissionUtil = PermissionUtil(activity)
     private val usageStatsUtil = UsageStatsUtil(activity)
     private val workManagerUtil = WorkManagerUtil(activity)
+    
+    // Coroutine scope for background tasks
+    private val channelScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     fun setupMethodChannel() {
         channel.setMethodCallHandler(this)
@@ -32,13 +38,17 @@ class AppBlockerChannel(
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
-            // Get installed apps
+            // Get installed apps (HEAVY)
             "getInstalledApps" -> {
-                try {
-                    val apps = appInfoUtil.getInstalledApps()
-                    result.success(apps)
-                } catch (e: Exception) {
-                    result.error("ERROR", "Failed to get installed apps: ${e.message}", null)
+                channelScope.launch {
+                    try {
+                        val apps = withContext(Dispatchers.IO) {
+                            appInfoUtil.getInstalledApps()
+                        }
+                        result.success(apps)
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to get installed apps: ${e.message}", null)
+                    }
                 }
             }
 
@@ -158,75 +168,79 @@ class AppBlockerChannel(
 
             // Update blocked apps with full JSON data
             "updateBlockedAppsJson" -> {
-                try {
-                    val appsJson = call.argument<String>("appsJson")
-                    if (appsJson != null) {
-                        val prefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
-                        prefs.edit().putString("blocked_apps", appsJson).apply()
-                        Log.d("AppBlockerChannel", "Blocked apps JSON updated: $appsJson")
-                        result.success(null)
-                    } else {
-                        result.error("ERROR", "Apps JSON is null", null)
+                channelScope.launch(Dispatchers.IO) {
+                    try {
+                        val appsJson = call.argument<String>("appsJson")
+                        if (appsJson != null) {
+                            val prefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
+                            prefs.edit().putString("blocked_apps", appsJson).apply()
+                            Log.d("AppBlockerChannel", "Blocked apps JSON updated (${appsJson.length} bytes)")
+                            withContext(Dispatchers.Main) { result.success(null) }
+                        } else {
+                            withContext(Dispatchers.Main) { result.error("ERROR", "Apps JSON is null", null) }
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) { result.error("ERROR", "Failed to update blocked apps JSON: ${e.message}", null) }
                     }
-                } catch (e: Exception) {
-                    result.error("ERROR", "Failed to update blocked apps JSON: ${e.message}", null)
                 }
             }
 
             // Update schedules
             "updateSchedules" -> {
-                try {
-                    val schedules = call.argument<List<Map<String, Any>>>("schedules")
-                    if (schedules != null) {
-                        val prefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
-                        val schedulesJson = org.json.JSONArray(schedules).toString()
-                        prefs.edit().putString("schedules", schedulesJson).apply()
-                        Log.d("AppBlockerChannel", "Schedules updated: $schedulesJson")
-                        result.success(null)
-                    } else {
-                        result.error("ERROR", "Schedules are null", null)
+                channelScope.launch(Dispatchers.IO) {
+                    try {
+                        val schedules = call.argument<List<Map<String, Any>>>("schedules")
+                        if (schedules != null) {
+                            val prefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
+                            val schedulesJson = org.json.JSONArray(schedules).toString()
+                            prefs.edit().putString("schedules", schedulesJson).apply()
+                            Log.d("AppBlockerChannel", "Schedules updated (${schedulesJson.length} bytes)")
+                            withContext(Dispatchers.Main) { result.success(null) }
+                        } else {
+                            withContext(Dispatchers.Main) { result.error("ERROR", "Schedules are null", null) }
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) { result.error("ERROR", "Failed to update schedules: ${e.message}", null) }
                     }
-                } catch (e: Exception) {
-                    result.error("ERROR", "Failed to update schedules: ${e.message}", null)
                 }
             }
 
             // Update usage limits
             "updateUsageLimits" -> {
-                try {
-                    val limitsJson = call.argument<String>("limitsJson")
-                    if (limitsJson != null) {
-                        val prefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
-                        prefs.edit().putString("usage_limits", limitsJson).apply()
-                        Log.d("AppBlockerChannel", "Usage limits updated: $limitsJson")
-                        result.success(null)
-                    } else {
-                        result.error("ERROR", "Limits JSON is null", null)
+                channelScope.launch(Dispatchers.IO) {
+                    try {
+                        val limitsJson = call.argument<String>("limitsJson")
+                        if (limitsJson != null) {
+                            val prefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
+                            prefs.edit().putString("usage_limits", limitsJson).apply()
+                            Log.d("AppBlockerChannel", "Usage limits updated (${limitsJson.length} bytes)")
+                            withContext(Dispatchers.Main) { result.success(null) }
+                        } else {
+                            withContext(Dispatchers.Main) { result.error("ERROR", "Limits JSON is null", null) }
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) { result.error("ERROR", "Failed to update usage limits: ${e.message}", null) }
                     }
-                } catch (e: Exception) {
-                    result.error("ERROR", "Failed to update usage limits: ${e.message}", null)
                 }
             }
 
-            // Get app usage stats
+            // Get app usage stats (HEAVY)
             "getAppUsageStats" -> {
-                try {
-                    val startTime = call.argument<Long>("startTime")
-                    val endTime = call.argument<Long>("endTime")
-                    if (startTime != null && endTime != null) {
-                        Log.d("AppBlockerChannel", "Getting usage stats from $startTime to $endTime")
-
-                        // Get usage stats from utility
-                        val usageStats = usageStatsUtil.getAppUsageStats(startTime, endTime)
-
-                        Log.d("AppBlockerChannel", "Found ${usageStats.size} apps with usage data")
-                        result.success(usageStats)
-                    } else {
-                        result.error("ERROR", "Start or end time is null", null)
+                channelScope.launch {
+                    try {
+                        val startTime = call.argument<Long>("startTime")
+                        val endTime = call.argument<Long>("endTime")
+                        if (startTime != null && endTime != null) {
+                            val usageStats = withContext(Dispatchers.IO) {
+                                usageStatsUtil.getAppUsageStats(startTime, endTime)
+                            }
+                            result.success(usageStats)
+                        } else {
+                            result.error("ERROR", "Start or end time is null", null)
+                        }
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to get usage stats: ${e.message}", null)
                     }
-                } catch (e: Exception) {
-                    Log.e("AppBlockerChannel", "Failed to get usage stats", e)
-                    result.error("ERROR", "Failed to get usage stats: ${e.message}", null)
                 }
             }
 
@@ -246,64 +260,56 @@ class AppBlockerChannel(
                 }
             }
 
-            // Get hourly usage stats
+            // Get hourly usage stats (HEAVY)
             "getHourlyUsageStats" -> {
-                try {
-                    val startTime = call.argument<Long>("startTime")
-                    val endTime = call.argument<Long>("endTime")
-                    if (startTime != null && endTime != null) {
-                        Log.d("AppBlockerChannel", "Getting hourly usage stats from $startTime to $endTime")
-
-                        val hourlyStats = usageStatsUtil.getHourlyUsageStats(startTime, endTime)
-
-                        Log.d("AppBlockerChannel", "Generated ${hourlyStats.size} hourly data points")
-                        result.success(hourlyStats)
-                    } else {
-                        result.error("ERROR", "Start or end time is null", null)
+                channelScope.launch {
+                    try {
+                        val startTime = call.argument<Long>("startTime")
+                        val endTime = call.argument<Long>("endTime")
+                        if (startTime != null && endTime != null) {
+                            val hourlyStats = withContext(Dispatchers.IO) {
+                                usageStatsUtil.getHourlyUsageStats(startTime, endTime)
+                            }
+                            result.success(hourlyStats)
+                        } else {
+                            result.error("ERROR", "Start or end time is null", null)
+                        }
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to get hourly usage stats: ${e.message}", null)
                     }
-                } catch (e: Exception) {
-                    Log.e("AppBlockerChannel", "Failed to get hourly usage stats", e)
-                    result.error("ERROR", "Failed to get hourly usage stats: ${e.message}", null)
                 }
             }
 
-            // Get today's usage from UsageTrackingService (real-time, more accurate)
+            // Get today's usage from UsageTrackingService (HEAVY)
             "getTodayUsageFromTrackingService" -> {
-                try {
-                    Log.d("AppBlockerChannel", "Getting today's usage from UsageTrackingService")
-
-                    val usageData = usageStatsUtil.getTodayUsageFromTrackingService()
-
-                    if (usageData.isEmpty()) {
-                        Log.d("AppBlockerChannel", "UsageTrackingService data is empty or stale")
-                        result.success(emptyMap<String, Long>())
-                    } else {
-                        Log.d("AppBlockerChannel", "Retrieved ${usageData.size} apps from UsageTrackingService")
+                channelScope.launch {
+                    try {
+                        val usageData = withContext(Dispatchers.IO) {
+                            usageStatsUtil.getTodayUsageFromTrackingService()
+                        }
                         result.success(usageData)
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to get usage from tracking service: ${e.message}", null)
                     }
-                } catch (e: Exception) {
-                    Log.e("AppBlockerChannel", "Failed to get usage from tracking service", e)
-                    result.error("ERROR", "Failed to get usage from tracking service: ${e.message}", null)
                 }
             }
 
-            // Get usage for a specific date from UsageTrackingService
+            // Get usage for a specific date from UsageTrackingService (HEAVY)
             "getUsageForDateFromTracking" -> {
-                try {
-                    val dateStr = call.argument<String>("date")
-                    if (dateStr != null) {
-                        Log.d("AppBlockerChannel", "Getting usage for date: $dateStr")
-
-                        val usageData = usageStatsUtil.getUsageForDateFromTracking(dateStr)
-
-                        Log.d("AppBlockerChannel", "Retrieved ${usageData.size} apps for $dateStr")
-                        result.success(usageData)
-                    } else {
-                        result.error("ERROR", "Date string is null", null)
+                channelScope.launch {
+                    try {
+                        val dateStr = call.argument<String>("date")
+                        if (dateStr != null) {
+                            val usageData = withContext(Dispatchers.IO) {
+                                usageStatsUtil.getUsageForDateFromTracking(dateStr)
+                            }
+                            result.success(usageData)
+                        } else {
+                            result.error("ERROR", "Date string is null", null)
+                        }
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to get usage for date: ${e.message}", null)
                     }
-                } catch (e: Exception) {
-                    Log.e("AppBlockerChannel", "Failed to get usage for date", e)
-                    result.error("ERROR", "Failed to get usage for date: ${e.message}", null)
                 }
             }
 
@@ -467,94 +473,89 @@ class AppBlockerChannel(
                 }
             }
 
-            // Get session counts (number of times apps were opened)
+            // Get session counts (HEAVY)
             "getSessionCounts" -> {
-                try {
-                    val startTime = call.argument<Long>("startTime")
-                    val endTime = call.argument<Long>("endTime")
-                    if (startTime != null && endTime != null) {
-                        Log.d("AppBlockerChannel", "Getting session counts from $startTime to $endTime")
-
-                        val sessionCounts = usageStatsUtil.getSessionCounts(startTime, endTime)
-
-                        Log.d("AppBlockerChannel", "Found ${sessionCounts.size} apps with session counts")
-                        result.success(sessionCounts)
-                    } else {
-                        result.error("ERROR", "Start or end time is null", null)
+                channelScope.launch {
+                    try {
+                        val startTime = call.argument<Long>("startTime")
+                        val endTime = call.argument<Long>("endTime")
+                        if (startTime != null && endTime != null) {
+                            val sessionCounts = withContext(Dispatchers.IO) {
+                                usageStatsUtil.getSessionCounts(startTime, endTime)
+                            }
+                            result.success(sessionCounts)
+                        } else {
+                            result.error("ERROR", "Start or end time is null", null)
+                        }
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to get session counts: ${e.message}", null)
                     }
-                } catch (e: Exception) {
-                    Log.e("AppBlockerChannel", "Failed to get session counts", e)
-                    result.error("ERROR", "Failed to get session counts: ${e.message}", null)
                 }
             }
 
-            // Get today's session counts from UsageTrackingService
+            // Get today's session counts from UsageTrackingService (HEAVY)
             "getTodaySessionCountsFromTracking" -> {
-                try {
-                    Log.d("AppBlockerChannel", "Getting today's session counts from UsageTrackingService")
-
-                    val sessionCounts = usageStatsUtil.getTodaySessionCountsFromTracking()
-
-                    Log.d("AppBlockerChannel", "Retrieved ${sessionCounts.size} session counts from tracking")
-                    result.success(sessionCounts)
-                } catch (e: Exception) {
-                    Log.e("AppBlockerChannel", "Failed to get session counts from tracking", e)
-                    result.error("ERROR", "Failed to get session counts from tracking: ${e.message}", null)
-                }
-            }
-
-            // Get session counts for a specific date
-            "getSessionCountsForDate" -> {
-                try {
-                    val dateStr = call.argument<String>("date")
-                    if (dateStr != null) {
-                        Log.d("AppBlockerChannel", "Getting session counts for date: $dateStr")
-
-                        val sessionCounts = usageStatsUtil.getSessionCountsForDate(dateStr)
-
-                        Log.d("AppBlockerChannel", "Retrieved ${sessionCounts.size} session counts for $dateStr")
+                channelScope.launch {
+                    try {
+                        val sessionCounts = withContext(Dispatchers.IO) {
+                            usageStatsUtil.getTodaySessionCountsFromTracking()
+                        }
                         result.success(sessionCounts)
-                    } else {
-                        result.error("ERROR", "Date string is null", null)
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to get session counts from tracking: ${e.message}", null)
                     }
-                } catch (e: Exception) {
-                    Log.e("AppBlockerChannel", "Failed to get session counts for date", e)
-                    result.error("ERROR", "Failed to get session counts for date: ${e.message}", null)
                 }
             }
 
-            // Get today's block attempts from tracking
+            // Get session counts for a specific date (HEAVY)
+            "getSessionCountsForDate" -> {
+                channelScope.launch {
+                    try {
+                        val dateStr = call.argument<String>("date")
+                        if (dateStr != null) {
+                            val sessionCounts = withContext(Dispatchers.IO) {
+                                usageStatsUtil.getSessionCountsForDate(dateStr)
+                            }
+                            result.success(sessionCounts)
+                        } else {
+                            result.error("ERROR", "Date string is null", null)
+                        }
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to get session counts for date: ${e.message}", null)
+                    }
+                }
+            }
+
+            // Get today's block attempts from tracking (HEAVY)
             "getTodayBlockAttemptsFromTracking" -> {
-                try {
-                    Log.d("AppBlockerChannel", "Getting today's block attempts from tracking")
-
-                    val blockAttempts = usageStatsUtil.getTodayBlockAttemptsFromTracking()
-
-                    Log.d("AppBlockerChannel", "Retrieved ${blockAttempts.size} block attempts from tracking")
-                    result.success(blockAttempts)
-                } catch (e: Exception) {
-                    Log.e("AppBlockerChannel", "Failed to get block attempts from tracking", e)
-                    result.error("ERROR", "Failed to get block attempts from tracking: ${e.message}", null)
+                channelScope.launch {
+                    try {
+                        val blockAttempts = withContext(Dispatchers.IO) {
+                            usageStatsUtil.getTodayBlockAttemptsFromTracking()
+                        }
+                        result.success(blockAttempts)
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to get block attempts from tracking: ${e.message}", null)
+                    }
                 }
             }
 
-            // Get block attempts for a specific date
+            // Get block attempts for a specific date (HEAVY)
             "getBlockAttemptsForDate" -> {
-                try {
-                    val dateStr = call.argument<String>("date")
-                    if (dateStr != null) {
-                        Log.d("AppBlockerChannel", "Getting block attempts for date: $dateStr")
-
-                        val blockAttempts = usageStatsUtil.getBlockAttemptsForDate(dateStr)
-
-                        Log.d("AppBlockerChannel", "Retrieved ${blockAttempts.size} block attempts for $dateStr")
-                        result.success(blockAttempts)
-                    } else {
-                        result.error("ERROR", "Date string is null", null)
+                channelScope.launch {
+                    try {
+                        val dateStr = call.argument<String>("date")
+                        if (dateStr != null) {
+                            val blockAttempts = withContext(Dispatchers.IO) {
+                                usageStatsUtil.getBlockAttemptsForDate(dateStr)
+                            }
+                            result.success(blockAttempts)
+                        } else {
+                            result.error("ERROR", "Date string is null", null)
+                        }
+                    } catch (e: Exception) {
+                        result.error("ERROR", "Failed to get block attempts for date: ${e.message}", null)
                     }
-                } catch (e: Exception) {
-                    Log.e("AppBlockerChannel", "Failed to get block attempts for date", e)
-                    result.error("ERROR", "Failed to get block attempts for date: ${e.message}", null)
                 }
             }
 
@@ -571,14 +572,17 @@ class AppBlockerChannel(
                 }
             }
 
-            // ✨ NEW: Reset stats command
+            // ✨ NEW: Reset stats command (HEAVY)
             "clearUsageData" -> {
-                try {
-                    usageStatsUtil.clearAllUsageData()
-                    result.success(true)
-                } catch (e: Exception) {
-                     Log.e("AppBlockerChannel", "Failed to clear usage data", e)
-                     result.error("ERROR", "Failed to clear usage data: ${e.message}", null)
+                channelScope.launch {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            usageStatsUtil.clearAllUsageData()
+                        }
+                        result.success(true)
+                    } catch (e: Exception) {
+                         result.error("ERROR", "Failed to clear usage data: ${e.message}", null)
+                    }
                 }
             }
 

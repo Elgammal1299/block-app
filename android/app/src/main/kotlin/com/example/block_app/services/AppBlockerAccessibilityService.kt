@@ -10,6 +10,12 @@ import com.example.block_app.ui.BlockOverlayActivity
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.*
+import kotlinx.coroutines.*
+import android.content.SharedPreferences
+import android.app.usage.UsageStatsManager
+import android.os.PowerManager
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 
 class AppBlockerAccessibilityService : AccessibilityService() {
 
@@ -20,6 +26,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         private const val KEY_SCHEDULES = "schedules"
         private const val KEY_USAGE_LIMITS = "usage_limits"
         private const val KEY_TEMP_UNLOCK = "temp_unlock_until"
+        private const val KEY_DYNAMIC_BLOCKS = "dynamic_blocked_apps" // Persistent usage-limit blocks
         private const val KEY_FOCUS_SESSION_PACKAGES = "focus_session_packages"
         private const val KEY_FOCUS_SESSION_END = "focus_session_end_time"
 
@@ -32,13 +39,63 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         }
     }
 
+    // --- Data Classes for Performance (Pre-parsed Cache) ---
+    private data class BlockConfig(
+        val packageName: String,
+        var isBlocked: Boolean,
+        var blockAttempts: Int,
+        val scheduleIds: List<String>
+    )
+
+    private data class ScheduleConfig(
+        val id: String,
+        val isEnabled: Boolean,
+        val daysOfWeek: List<Int>,
+        val startTimeMinutes: Int, // Total minutes from midnight
+        val endTimeMinutes: Int
+    )
+
+    private data class UsageLimitConfig(
+        val packageName: String,
+        val isEnabled: Boolean,
+        val dailyLimitMillis: Long
+    )
+
     private var currentSessionPackage: String? = null
     private var sessionStartTime: Long = 0
-    private var screenOffReceiver: android.content.BroadcastReceiver? = null
+    private var screenOffReceiver: BroadcastReceiver? = null
+    
+    // Cache for settings - Typed for zero-parsing access
+    private var cachedBlockedApps = mutableMapOf<String, BlockConfig>()
+    private var cachedSchedules = mutableMapOf<String, ScheduleConfig>()
+    private var cachedUsageLimits = mutableMapOf<String, UsageLimitConfig>()
+    private var cachedDynamicBlocks = mutableMapOf<String, BlockConfig>()
+    
+    // New caches for usage and focus
+    private var cachedTodayUsage = mutableMapOf<String, Long>()
+    private var cachedFocusPackages = mutableSetOf<String>()
+    private var cachedFocusEndTime = 0L
+    
+    private var lastCacheRefreshTime = 0L
+
+    // Coroutine scope for background tasks
+    private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private var usageMonitorJob: Job? = null
+    private var prefs: SharedPreferences? = null
+
+    private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        refreshCache()
+    }
+
+    private var lastOverlayTime = 0L
+    private var lastTargetPackage: String? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        Log.d(TAG, "Accessibility Service Connected - Usage Tracking Enabled")
+        Log.d(TAG, "Accessibility Service Connected - Performance Optimized")
+
+        prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs?.registerOnSharedPreferenceChangeListener(prefChangeListener)
 
         val info = AccessibilityServiceInfo()
         info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
@@ -47,30 +104,236 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         info.notificationTimeout = 100
         serviceInfo = info
 
+        // Refresh cache initially
+        refreshCache()
+
         // Register receiver for screen events to handle session closing
         registerScreenReceiver()
         
-        // Notify UsageTrackingService to yield/pause (optional optimization)
+        // Notify UsageTrackingService to yield/pause
         disableLegacyTracking()
+
+        // Start background usage monitor
+        startUsageMonitor()
     }
     
     override fun onDestroy() {
         super.onDestroy()
+        prefs?.unregisterOnSharedPreferenceChangeListener(prefChangeListener)
         unregisterScreenReceiver()
         // Close any open session
         endCurrentSession()
         // Re-enable legacy tracking service as fallback
         enableLegacyTracking()
+        // Cancel background tasks
+        serviceScope.cancel()
+    }
+
+    private fun refreshCache() {
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                val p = prefs ?: return@launch
+                
+                // 1. Blocked Apps
+                val blockedAppsJson = p.getString(KEY_BLOCKED_APPS, "[]") ?: "[]"
+                val blockedAppsArray = JSONArray(blockedAppsJson)
+                val newBlockedApps = mutableMapOf<String, BlockConfig>()
+                for (i in 0 until blockedAppsArray.length()) {
+                    val app = blockedAppsArray.getJSONObject(i)
+                    val pkg = app.getString("packageName")
+                    val sIds = mutableListOf<String>()
+                    val sArray = app.optJSONArray("scheduleIds")
+                    if (sArray != null) {
+                        for (j in 0 until sArray.length()) sIds.add(sArray.getString(j))
+                    }
+                    newBlockedApps[pkg] = BlockConfig(
+                        packageName = pkg,
+                        isBlocked = app.optBoolean("isBlocked", false),
+                        blockAttempts = app.optInt("blockAttempts", 0),
+                        scheduleIds = sIds
+                    )
+                }
+
+                // 2. Schedules
+                val schedulesJson = p.getString(KEY_SCHEDULES, "[]") ?: "[]"
+                val schedulesArray = JSONArray(schedulesJson)
+                val newSchedules = mutableMapOf<String, ScheduleConfig>()
+                for (i in 0 until schedulesArray.length()) {
+                    val schedule = schedulesArray.getJSONObject(i)
+                    val id = schedule.getString("id")
+                    
+                    val days = mutableListOf<Int>()
+                    val daysArray = schedule.getJSONArray("daysOfWeek")
+                    for (j in 0 until daysArray.length()) days.add(daysArray.getInt(j))
+                    
+                    val startTime = schedule.getJSONObject("startTime")
+                    val endTime = schedule.getJSONObject("endTime")
+                    
+                    newSchedules[id] = ScheduleConfig(
+                        id = id,
+                        isEnabled = schedule.getBoolean("isEnabled"),
+                        daysOfWeek = days,
+                        startTimeMinutes = startTime.getInt("hour") * 60 + startTime.getInt("minute"),
+                        endTimeMinutes = endTime.getInt("hour") * 60 + endTime.getInt("minute")
+                    )
+                }
+
+                // 3. Usage Limits
+                val usageLimitsJson = p.getString(KEY_USAGE_LIMITS, "[]") ?: "[]"
+                val limitsArray = JSONArray(usageLimitsJson)
+                val newUsageLimits = mutableMapOf<String, UsageLimitConfig>()
+                for (i in 0 until limitsArray.length()) {
+                    val limit = limitsArray.getJSONObject(i)
+                    val pkg = limit.getString("packageName")
+                    newUsageLimits[pkg] = UsageLimitConfig(
+                        packageName = pkg,
+                        isEnabled = limit.optBoolean("isEnabled", true),
+                        dailyLimitMillis = limit.getInt("dailyLimitMinutes") * 60 * 1000L
+                    )
+                }
+
+                // 4. ✨ Dynamic Blocks
+                val dynamicJson = p.getString(KEY_DYNAMIC_BLOCKS, "{}") ?: "{}"
+                val dynamicObj = JSONObject(dynamicJson)
+                val newDynamicBlocks = mutableMapOf<String, BlockConfig>()
+                val keys = dynamicObj.keys()
+                while (keys.hasNext()) {
+                    val pkg = keys.next()
+                    val app = dynamicObj.getJSONObject(pkg)
+                    val sIds = mutableListOf<String>()
+                    val sArray = app.optJSONArray("scheduleIds")
+                    if (sArray != null) {
+                        for (j in 0 until sArray.length()) sIds.add(sArray.getString(j))
+                    }
+                    newDynamicBlocks[pkg] = BlockConfig(
+                        packageName = pkg,
+                        isBlocked = app.optBoolean("isBlocked", false),
+                        blockAttempts = app.optInt("blockAttempts", 0),
+                        scheduleIds = sIds
+                    )
+                }
+
+                // Update memory cache
+                synchronized(this@AppBlockerAccessibilityService) {
+                    cachedBlockedApps = newBlockedApps
+                    cachedSchedules = newSchedules
+                    cachedUsageLimits = newUsageLimits
+                    cachedDynamicBlocks = newDynamicBlocks
+                    
+                    // Merge dynamic blocks into cachedBlockedApps
+                    for ((pkg, config) in newDynamicBlocks) {
+                        cachedBlockedApps[pkg] = config
+                    }
+                }
+                
+                lastCacheRefreshTime = System.currentTimeMillis()
+                Log.d(TAG, "Cache refreshed and pre-parsed into objects")
+                
+                refreshUsageAndFocusCache()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error refreshing cache: ${e.message}")
+            }
+        }
+    }
+
+    private fun refreshUsageAndFocusCache() {
+        try {
+            // 1. Refresh Today's Usage Cache
+            val trackingPrefs = getSharedPreferences("usage_tracking", Context.MODE_PRIVATE)
+            val calendar = Calendar.getInstance()
+            val today = "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.MONTH) + 1}-${calendar.get(Calendar.DAY_OF_MONTH)}"
+            val storageKey = "daily_usage_$today"
+            
+            val dataJson = trackingPrefs.getString(storageKey, "{}")
+            val jsonObject = JSONObject(dataJson ?: "{}")
+            val newUsage = mutableMapOf<String, Long>()
+            val keys = jsonObject.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                newUsage[key] = jsonObject.optLong(key, 0)
+            }
+            
+            // 2. Refresh Focus Session Cache
+            val mainPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val focusJson = mainPrefs.getString(KEY_FOCUS_SESSION_PACKAGES, null)
+            val focusEndTime = mainPrefs.getLong(KEY_FOCUS_SESSION_END, 0)
+            val newFocusPackages = mutableSetOf<String>()
+            
+            if (focusJson != null && System.currentTimeMillis() <= focusEndTime) {
+                val array = JSONArray(focusJson)
+                for (i in 0 until array.length()) {
+                    newFocusPackages.add(array.getString(i))
+                }
+            }
+
+            synchronized(this) {
+                cachedTodayUsage = newUsage
+                cachedFocusPackages = newFocusPackages
+                cachedFocusEndTime = focusEndTime
+            }
+            Log.v(TAG, "Usage/Focus cache updated: ${newUsage.size} usage entries, ${newFocusPackages.size} focus apps")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error refreshing usage/focus cache: ${e.message}")
+        }
+    }
+
+    private fun startUsageMonitor() {
+        if (usageMonitorJob?.isActive == true) return
+        
+        usageMonitorJob?.cancel()
+        Log.d(TAG, "Starting Usage Monitor Loop (1s interval) - Heartbeat Enabled")
+        usageMonitorJob = serviceScope.launch {
+            var heartbeatCount = 0
+            while (isActive) {
+                try {
+                    val currentPackage = currentSessionPackage
+                    if (currentPackage != null) {
+                        // Periodic Heartbeat Log (Every 10 seconds to avoid spam)
+                        if (heartbeatCount++ % 10 == 0) {
+                            Log.v(TAG, "Monitor Heartbeat: Tracking $currentPackage")
+                        }
+
+                        val isLimitReached = hasReachedUsageLimit(currentPackage)
+                        val isFocusBlocked = isInActiveFocusSession(currentPackage)
+                        val isScheduleBlocked = shouldBlockApp(currentPackage)
+
+                        if (isLimitReached || isFocusBlocked || isScheduleBlocked) {
+                            if (!isTemporarilyUnlocked()) {
+                                val reason = when {
+                                    isFocusBlocked -> "focus_mode"
+                                    isLimitReached -> "usage_limit_reached"
+                                    else -> "schedule"
+                                }
+
+                                withContext(Dispatchers.Main) {
+                                    handleBlockAction(currentPackage, reason, source = "Heartbeat")
+                                }
+                                
+                                // Delay slightly to allow UI transition and avoid CPU thrashing
+                                delay(500)
+                            }
+                        }
+                    } else {
+                        heartbeatCount = 0 // Reset when no app open
+                    }
+                    delay(1000)
+                } catch (e: Exception) {
+                    if (e !is CancellationException) {
+                        Log.e(TAG, "Error in usage monitor loop: ${e.message}")
+                    }
+                }
+            }
+        }
     }
 
     private fun registerScreenReceiver() {
-        val filter = android.content.IntentFilter().apply {
+        val filter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_USER_PRESENT)
         }
         
-        screenOffReceiver = object : android.content.BroadcastReceiver() {
+        screenOffReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 when (intent.action) {
                     Intent.ACTION_SCREEN_OFF -> {
@@ -78,8 +341,6 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                         endCurrentSession()
                     }
                     Intent.ACTION_USER_PRESENT, Intent.ACTION_SCREEN_ON -> {
-                        // We wait for the next WINDOW_STATE_CHANGED event to start a session
-                        // But we reset start time just in case
                         Log.d(TAG, "Screen ON - Ready for next app")
                     }
                 }
@@ -174,6 +435,9 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
         // 4. It's a valid new app -> Start new session
         startNewSession(newPackage)
+        
+        // 5. Ensure monitor is running
+        startUsageMonitor()
     }
 
     private fun startNewSession(packageName: String) {
@@ -199,8 +463,16 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
         // ✨ DEBOUNCE LOGIC: Only count sessions longer than 3 seconds
         // This filters out accidental clicks and system noise blips (e.g. 411ms sessions)
-        if (duration > 3000) { 
-            // Valid Session -> Save Usage
+        if (duration > 3000) {
+            // 🚀 RACE CONDITION FIX: Update MEMORY cache immediately
+            // This stops the monitor loop (1s heartbeat) from seeing the 'stale' usage
+            // while the asynchronous updateDailyUsage (I/O) is still processing.
+            synchronized(this) {
+                val currentStored = cachedTodayUsage[packageName] ?: 0L
+                cachedTodayUsage[packageName] = currentStored + duration
+            }
+            
+            // Valid Session -> Save Usage (Async I/O)
             updateDailyUsage(packageName, duration)
             
             // Valid Session -> Increment Open Count
@@ -221,46 +493,50 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     // --- Persistence Methods (Matching UsageTrackingService logic) ---
 
     private fun updateDailyUsage(packageName: String, duration: Long) {
-        try {
-            val prefs = getSharedPreferences("usage_tracking", Context.MODE_PRIVATE)
-            val calendar = Calendar.getInstance()
-            val today = "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.MONTH) + 1}-${calendar.get(Calendar.DAY_OF_MONTH)}"
-            
-            val storageKey = "daily_usage_$today"
-            val dataJson = prefs.getString(storageKey, "{}")
-            val jsonObject = JSONObject(dataJson ?: "{}")
-            
-            val currentUsage = jsonObject.optLong(packageName, 0L)
-            jsonObject.put(packageName, currentUsage + duration)
-            
-            prefs.edit()
-                .putString(storageKey, jsonObject.toString())
-                .putLong("last_update", System.currentTimeMillis())
-                .apply()
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                val trackingPrefs = getSharedPreferences("usage_tracking", Context.MODE_PRIVATE)
+                val calendar = Calendar.getInstance()
+                val today = "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.MONTH) + 1}-${calendar.get(Calendar.DAY_OF_MONTH)}"
                 
-        } catch (e: Exception) {
-            Log.e(TAG, "Error saving usage: ${e.message}")
+                val storageKey = "daily_usage_$today"
+                val dataJson = trackingPrefs.getString(storageKey, "{}")
+                val jsonObject = JSONObject(dataJson ?: "{}")
+                
+                val currentUsage = jsonObject.optLong(packageName, 0L)
+                jsonObject.put(packageName, currentUsage + duration)
+                
+                trackingPrefs.edit()
+                    .putString(storageKey, jsonObject.toString())
+                    .putLong("last_update", System.currentTimeMillis())
+                    .apply()
+                    
+            } catch (e: Exception) {
+                Log.e(TAG, "Error saving usage: ${e.message}")
+            }
         }
     }
 
     private fun trackSessionOpen(packageName: String, timestamp: Long) {
-        try {
-            val prefs = getSharedPreferences("usage_tracking", Context.MODE_PRIVATE)
-            val calendar = Calendar.getInstance()
-            calendar.timeInMillis = timestamp
-            val dateKey = "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.MONTH) + 1}-${calendar.get(Calendar.DAY_OF_MONTH)}"
-            
-            val storageKey = "session_count_$dateKey"
-            val dataJson = prefs.getString(storageKey, "{}")
-            val jsonObject = JSONObject(dataJson ?: "{}")
-            
-            val currentCount = jsonObject.optInt(packageName, 0)
-            jsonObject.put(packageName, currentCount + 1)
-            
-            prefs.edit().putString(storageKey, jsonObject.toString()).apply()
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Error tracking open count: ${e.message}")
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                val trackingPrefs = getSharedPreferences("usage_tracking", Context.MODE_PRIVATE)
+                val calendar = Calendar.getInstance()
+                calendar.timeInMillis = timestamp
+                val dateKey = "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.MONTH) + 1}-${calendar.get(Calendar.DAY_OF_MONTH)}"
+                
+                val storageKey = "session_count_$dateKey"
+                val dataJson = trackingPrefs.getString(storageKey, "{}")
+                val jsonObject = JSONObject(dataJson ?: "{}")
+                
+                val currentCount = jsonObject.optInt(packageName, 0)
+                jsonObject.put(packageName, currentCount + 1)
+                
+                trackingPrefs.edit().putString(storageKey, jsonObject.toString()).apply()
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Error tracking open count: ${e.message}")
+            }
         }
     }
     
@@ -304,16 +580,21 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
         val packageName = event.packageName?.toString() ?: return
 
-        // Don't block our own app
+        // Don't block our own app OR let it be counted as usage
         if (packageName == this.packageName) {
+            // If we are showing the blocker, end the session for the previously open app
+            endCurrentSession()
             return
         }
         
         // 🟢 4. Filter System Interruptions (Input Methods, Launchers, Permission Dialogs)
         if (isInterruption(packageName) || isStopper(packageName)) {
-             // Handle stopper logic (End session if home)
+             // Handle stopper logic (End session if home or our app)
              if (isStopper(packageName)) {
                  endCurrentSession()
+                 // Reset target so that re-opening the app blocks immediately 
+                 // without waiting for the 3s throttle guard.
+                 lastTargetPackage = null 
              }
              return
         }
@@ -334,82 +615,82 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         // UNLESS we are at a minute boundary (to catch schedule starts)
         // But for now, let's rely on the Debounce to throttle this.
         
-        // Check if app is in active focus session (priority check)
-        if (isInActiveFocusSession(packageName)) {
-            Log.d(TAG, "Blocking app (Focus Mode): $packageName")
-            incrementBlockAttempts(packageName)
-            launchBlockOverlay(packageName)
-            return
+        // Check for block reasons in priority order
+        val reason = when {
+            isInActiveFocusSession(packageName) -> "focus_mode"
+            hasReachedUsageLimit(packageName) -> "usage_limit_reached"
+            shouldBlockApp(packageName) -> "schedule"
+            else -> null
         }
 
-        // Check if app has reached its usage limit (priority check)
-        if (hasReachedUsageLimit(packageName)) {
-            Log.d(TAG, "Blocking app (Usage Limit): $packageName")
-            incrementBlockAttempts(packageName)
-            launchBlockOverlay(packageName)
-            return
-        }
-
-        // Check if app should be blocked by schedule (standard check)
-        if (shouldBlockApp(packageName)) {
-            Log.d(TAG, "Blocking app (Schedule): $packageName")
-            incrementBlockAttempts(packageName)
-            launchBlockOverlay(packageName)
-            return
+        if (reason != null && !isTemporarilyUnlocked()) {
+            handleBlockAction(packageName, reason, source = "AccessibilityEvent")
+            lastCheckedPackage = packageName // Update tracking
         }
     }
+
+    /**
+     * Centralized blocking logic to prevent loops and race conditions.
+     */
+    private fun handleBlockAction(packageName: String, reason: String, source: String) {
+        val currentTime = System.currentTimeMillis()
+        
+        // 1. ✨ THROTTLE GUARD: If we just showed the block screen for this app recently, STOP.
+        if (packageName == lastTargetPackage && (currentTime - lastOverlayTime < 3000)) {
+            Log.v(TAG, "Blocking logic throttled for $packageName ($source)")
+            return
+        }
+
+        // 2. 🚀 IMMEDIATE STATE UPDATE
+        lastTargetPackage = packageName
+        lastOverlayTime = currentTime
+        lastCheckedPackage = packageName
+
+        // 3. 🧠 SYNCHRONOUS MEMORY CACHE UPDATE
+        synchronized(this) {
+            val config = cachedBlockedApps[packageName] ?: BlockConfig(
+                packageName = packageName,
+                isBlocked = true,
+                blockAttempts = 0,
+                scheduleIds = emptyList()
+            )
+            config.isBlocked = true
+            cachedBlockedApps[packageName] = config
+        }
+
+        Log.w(TAG, "🚫 Block Trigger [$source] for $packageName. Reason: $reason")
+        
+        // 4. Launch Overlay
+        launchBlockOverlay(packageName, reason)
+        
+        // 6. Persistence: Officially promote and increment count (Background thread)
+        incrementBlockAttempts(packageName)
+    }
+
     override fun onInterrupt() {
         Log.d(TAG, "Accessibility Service Interrupted")
     }
 
     private fun shouldBlockApp(packageName: String): Boolean {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val blockedAppsJson = prefs.getString(KEY_BLOCKED_APPS, null) ?: run {
-            Log.d(TAG, "No blocked apps JSON found in preferences")
-            return false
-        }
+        val appConfig = synchronized(this) { cachedBlockedApps[packageName] } ?: return false
 
         try {
-            val blockedAppsArray = JSONArray(blockedAppsJson)
-            Log.d(TAG, "Checking $packageName against ${blockedAppsArray.length()} blocked apps")
-
-            // Find this app in blocked apps list
-            for (i in 0 until blockedAppsArray.length()) {
-                val appObj = blockedAppsArray.getJSONObject(i)
-                if (appObj.getString("packageName") == packageName) {
-                    val scheduleIds = appObj.optJSONArray("scheduleIds")
-
-                    // If no schedules assigned, block 24/7
-                    if (scheduleIds == null || scheduleIds.length() == 0) {
-                        Log.d(TAG, "App $packageName has no schedules - blocking 24/7")
-                        return true
-                    }
-
-                    // Check if current time is within any of the assigned schedules
-                    Log.d(TAG, "App $packageName has ${scheduleIds.length()} schedule(s)")
-                    val shouldBlock = isWithinAnySchedule(scheduleIds)
-                    Log.d(TAG, "App $packageName should${if (shouldBlock) "" else " NOT"} be blocked")
-                    return shouldBlock
-                }
+            // If no schedules assigned, block 24/7
+            if (appConfig.scheduleIds.isEmpty()) {
+                return true
             }
+
+            // Check if current time is within any of the assigned schedules
+            return isWithinAnySchedule(appConfig.scheduleIds)
         } catch (e: Exception) {
-            Log.e(TAG, "Error parsing blocked apps: ${e.message}")
+            Log.e(TAG, "Error checking schedules for $packageName: ${e.message}")
         }
 
         return false
     }
 
-    private fun isWithinAnySchedule(scheduleIds: JSONArray): Boolean {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val schedulesJson = prefs.getString(KEY_SCHEDULES, null) ?: run {
-            Log.d(TAG, "No schedules JSON found in preferences")
-            return false
-        }
-
-        Log.d(TAG, "Schedules JSON: $schedulesJson")
-
+    private fun isWithinAnySchedule(scheduleIds: List<String>): Boolean {
         try {
-            val schedulesArray = JSONArray(schedulesJson)
             val calendar = Calendar.getInstance()
             val currentDayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
             val currentHour = calendar.get(Calendar.HOUR_OF_DAY)
@@ -428,52 +709,27 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 else -> 1
             }
 
-            Log.d(TAG, "Current time: ${String.format("%02d:%02d", currentHour, currentMinute)} ($currentMinutes mins), Day: $dayOfWeek")
+            // Check each assigned schedule using memory cache
+            for (scheduleId in scheduleIds) {
+                val schedule = synchronized(this) { cachedSchedules[scheduleId] }
+                    ?: continue
 
-            // Check each assigned schedule
-            for (i in 0 until scheduleIds.length()) {
-                val scheduleId = scheduleIds.getString(i)
+                if (schedule.isEnabled) {
+                    // Check if today is in the schedule's days
+                    if (schedule.daysOfWeek.contains(dayOfWeek)) {
+                        val startMinutes = schedule.startTimeMinutes
+                        val endMinutes = schedule.endTimeMinutes
 
-                // Find this schedule in all schedules
-                for (j in 0 until schedulesArray.length()) {
-                    val schedule = schedulesArray.getJSONObject(j)
-
-                    if (schedule.getString("id") == scheduleId && schedule.getBoolean("isEnabled")) {
-                        // Check if today is in the schedule's days
-                        val daysOfWeek = schedule.getJSONArray("daysOfWeek")
-                        var isDayMatch = false
-                        for (k in 0 until daysOfWeek.length()) {
-                            if (daysOfWeek.getInt(k) == dayOfWeek) {
-                                isDayMatch = true
-                                break
-                            }
+                        // Check if current time is within this schedule
+                        val isWithinTime = if (endMinutes < startMinutes) {
+                            // Schedule crosses midnight
+                            currentMinutes >= startMinutes || currentMinutes <= endMinutes
+                        } else {
+                            currentMinutes in startMinutes..endMinutes
                         }
 
-                        if (isDayMatch) {
-                            // Parse start and end times
-                            val startTime = schedule.getJSONObject("startTime")
-                            val endTime = schedule.getJSONObject("endTime")
-                            val startMinutes = startTime.getInt("hour") * 60 + startTime.getInt("minute")
-                            val endMinutes = endTime.getInt("hour") * 60 + endTime.getInt("minute")
-
-                            Log.d(TAG, "Schedule $scheduleId: ${String.format("%02d:%02d", startTime.getInt("hour"), startTime.getInt("minute"))} - ${String.format("%02d:%02d", endTime.getInt("hour"), endTime.getInt("minute"))}")
-
-                            // Check if current time is within this schedule
-                            val isWithinTime = if (endMinutes < startMinutes) {
-                                // Schedule crosses midnight
-                                currentMinutes >= startMinutes || currentMinutes <= endMinutes
-                            } else {
-                                currentMinutes >= startMinutes && currentMinutes <= endMinutes
-                            }
-
-                            Log.d(TAG, "Is within time? $isWithinTime (current: $currentMinutes, start: $startMinutes, end: $endMinutes)")
-
-                            if (isWithinTime) {
-                                Log.d(TAG, "✓ Current time is within schedule $scheduleId - BLOCKING")
-                                return true
-                            } else {
-                                Log.d(TAG, "✗ Current time is NOT within schedule $scheduleId")
-                            }
+                        if (isWithinTime) {
+                            return true
                         }
                     }
                 }
@@ -486,93 +742,45 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     }
 
     private fun isInActiveFocusSession(packageName: String): Boolean {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val sessionEndTime = prefs.getLong(KEY_FOCUS_SESSION_END, 0)
+        val (focusPackages, endTime) = synchronized(this) {
+            Pair(cachedFocusPackages, cachedFocusEndTime)
+        }
 
         // Check if session is still active
-        if (System.currentTimeMillis() > sessionEndTime) {
-            // Session expired, clear it
-            if (sessionEndTime > 0) {
-                prefs.edit()
-                    .remove(KEY_FOCUS_SESSION_PACKAGES)
-                    .remove(KEY_FOCUS_SESSION_END)
-                    .apply()
-                Log.d(TAG, "Focus session expired and cleared")
-            }
+        if (System.currentTimeMillis() > endTime) {
             return false
         }
 
-        // Check if package is in focus session
-        val focusPackagesJson = prefs.getString(KEY_FOCUS_SESSION_PACKAGES, null)
-        if (focusPackagesJson != null) {
-            try {
-                val packagesArray = JSONArray(focusPackagesJson)
-                for (i in 0 until packagesArray.length()) {
-                    if (packagesArray.getString(i) == packageName) {
-                        Log.d(TAG, "Package $packageName is in active focus session")
-                        return true
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error parsing focus session packages: ${e.message}")
-            }
-        }
-
-        return false
+        return focusPackages.contains(packageName)
     }
 
     private fun hasReachedUsageLimit(packageName: String): Boolean {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val usageLimitsJson = prefs.getString(KEY_USAGE_LIMITS, null) ?: return false
+        val limit = synchronized(this) { cachedUsageLimits[packageName] } ?: return false
 
         try {
-            val limitsArray = JSONArray(usageLimitsJson)
+            if (!limit.isEnabled) return false
 
-            // Find this app in usage limits
-            for (i in 0 until limitsArray.length()) {
-                val limit = limitsArray.getJSONObject(i)
-                if (limit.getString("packageName") == packageName) {
-                    val isEnabled = limit.optBoolean("isEnabled", true)
-                    if (!isEnabled) {
-                        return false
-                    }
+            val dailyLimitMillis = limit.dailyLimitMillis
 
-                    val dailyLimitMinutes = limit.getInt("dailyLimitMinutes")
-
-                    // ✨ OPTIMIZATION: Read usage from OUR OWN tracking storage directly
-                    // This avoids slow UsageStatsManager calls and sync issues
-                    val trackingPrefs = getSharedPreferences("usage_tracking", Context.MODE_PRIVATE)
-                    val calendar = Calendar.getInstance()
-                    val today = "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.MONTH) + 1}-${calendar.get(Calendar.DAY_OF_MONTH)}"
-                    val storageKey = "daily_usage_$today"
-                    
-                    val dataJson = trackingPrefs.getString(storageKey, "{}")
-                    val jsonObject = JSONObject(dataJson ?: "{}")
-                    
-                    // Get usage from stored map (milliseconds)
-                    val storedUsage = jsonObject.optLong(packageName, 0)
-                    
-                    // Add current session duration if it's the active package
-                    var totalUsageMillis = storedUsage
-                    if (packageName == currentSessionPackage && sessionStartTime > 0) {
-                        totalUsageMillis += (System.currentTimeMillis() - sessionStartTime)
-                    }
-                    
-                    val usedMinutes = (totalUsageMillis / 1000 / 60).toInt()
-
-                    Log.d(TAG, "Usage limit check for $packageName: $usedMinutes/$dailyLimitMinutes minutes (Source: Local Tracking)")
-
-                    // Block if limit is reached
-                    if (usedMinutes >= dailyLimitMinutes) {
-                        Log.d(TAG, "✓ Usage limit reached for $packageName")
-                        return true
-                    }
-
-                    return false
-                }
+            // Get stored usage from cache
+            val storedUsage = synchronized(this) {
+                cachedTodayUsage[packageName] ?: 0L
+            }
+            
+            // Critical calculation: Stored + Time since session started
+            var currentTotalUsage = storedUsage
+            if (packageName == currentSessionPackage && sessionStartTime > 0) {
+                val sessionDuration = System.currentTimeMillis() - sessionStartTime
+                currentTotalUsage += sessionDuration
+            }
+            
+            // Check if limit exceeded
+            if (currentTotalUsage >= dailyLimitMillis) {
+                Log.w(TAG, "Limit reached for $packageName! ${currentTotalUsage / 1000}s / ${dailyLimitMillis / 1000}s")
+                return true
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error checking usage limit: ${e.message}")
+            Log.e(TAG, "Error in hasReachedUsageLimit: ${e.message}")
         }
 
         return false
@@ -594,37 +802,76 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     }
 
     private fun incrementBlockAttempts(packageName: String) {
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val blockedAppsJson = prefs.getString(KEY_BLOCKED_APPS, null) ?: return
+        serviceScope.launch(Dispatchers.IO) {
+            val p = prefs ?: return@launch
+            val blockedAppsJson = p.getString(KEY_BLOCKED_APPS, "[]") ?: "[]"
+            val dynamicJson = p.getString(KEY_DYNAMIC_BLOCKS, "{}") ?: "{}"
 
-        try {
-            val blockedAppsArray = JSONArray(blockedAppsJson)
-            var found = false
+            try {
+                // 1. Update Official List (JSON)
+                val blockedAppsArray = JSONArray(blockedAppsJson)
+                var foundInOfficial = false
+                var updatedAttempts = 0
+                var scheduleIds = JSONArray()
 
-            // Find and update the blocked app's attempts
-            for (i in 0 until blockedAppsArray.length()) {
-                val appObj = blockedAppsArray.getJSONObject(i)
-                if (appObj.getString("packageName") == packageName) {
-                    val currentAttempts = appObj.optInt("blockAttempts", 0)
-                    appObj.put("blockAttempts", currentAttempts + 1)
-                    found = true
-                    Log.d(TAG, "Incremented block attempts for $packageName: ${currentAttempts + 1}")
-                    break
+                for (i in 0 until blockedAppsArray.length()) {
+                    val appObj = blockedAppsArray.getJSONObject(i)
+                    if (appObj.getString("packageName") == packageName) {
+                        updatedAttempts = appObj.optInt("blockAttempts", 0) + 1
+                        appObj.put("blockAttempts", updatedAttempts)
+                        appObj.put("isBlocked", true)
+                        scheduleIds = appObj.optJSONArray("scheduleIds") ?: JSONArray()
+                        foundInOfficial = true
+                        break
+                    }
                 }
-            }
 
-            if (found) {
-                // Save updated JSON back to preferences
-                prefs.edit().putString(KEY_BLOCKED_APPS, blockedAppsArray.toString()).apply()
-                Log.d(TAG, "Updated blocked apps JSON with new attempt count")
+                if (!foundInOfficial) {
+                    updatedAttempts = 1
+                    val newApp = JSONObject().apply {
+                        put("packageName", packageName)
+                        put("isBlocked", true)
+                        put("blockAttempts", 1)
+                        put("scheduleIds", JSONArray())
+                    }
+                    blockedAppsArray.put(newApp)
+                }
+
+                // 2. Update Dynamic List (JSON)
+                val dynamicObj = JSONObject(dynamicJson)
+                val existingDynamic = dynamicObj.optJSONObject(packageName) ?: JSONObject().apply {
+                    put("packageName", packageName)
+                    put("scheduleIds", scheduleIds)
+                }
+                existingDynamic.put("blockAttempts", updatedAttempts)
+                existingDynamic.put("isBlocked", true)
+                dynamicObj.put(packageName, existingDynamic)
+
+                // 3. Save Both
+                p.edit().apply {
+                    putString(KEY_BLOCKED_APPS, blockedAppsArray.toString())
+                    putString(KEY_DYNAMIC_BLOCKS, dynamicObj.toString())
+                }.commit()
+
+                // 4. Update Memory Cache (Typed)
+                val sIdsRef = mutableListOf<String>()
+                for (j in 0 until scheduleIds.length()) sIdsRef.add(scheduleIds.getString(j))
                 
-                // ✨ NEW: Also track daily block attempts for statistics
+                synchronized(this@AppBlockerAccessibilityService) {
+                    val config = BlockConfig(
+                        packageName = packageName,
+                        isBlocked = true,
+                        blockAttempts = updatedAttempts,
+                        scheduleIds = sIdsRef
+                    )
+                    cachedBlockedApps[packageName] = config
+                }
+                
                 trackDailyBlockAttempt(packageName)
-            } else {
-                Log.w(TAG, "Package $packageName not found in blocked apps list")
+                Log.d(TAG, "🚀 Session Promoted & Persisted for $packageName (Attempts: $updatedAttempts)")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error incrementing block attempts: ${e.message}")
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error incrementing block attempts: ${e.message}", e)
         }
     }
 
@@ -633,38 +880,35 @@ class AppBlockerAccessibilityService : AccessibilityService() {
      * Similar to session counting in UsageTrackingService
      */
     private fun trackDailyBlockAttempt(packageName: String) {
-        try {
-            val trackingPrefs = getSharedPreferences("usage_tracking", Context.MODE_PRIVATE)
-            val calendar = java.util.Calendar.getInstance()
-            val today = "${calendar.get(java.util.Calendar.YEAR)}-${calendar.get(java.util.Calendar.MONTH) + 1}-${calendar.get(java.util.Calendar.DAY_OF_MONTH)}"
-            
-            val storageKey = "block_attempts_$today"
-            
-            // Get existing block attempts data for today
-            val existingDataJson = trackingPrefs.getString(storageKey, "{}")
-            val blockAttemptsData = JSONObject(existingDataJson ?: "{}")
-            
-            // Increment count for this app
-            val currentCount = blockAttemptsData.optInt(packageName, 0)
-            blockAttemptsData.put(packageName, currentCount + 1)
-            
-            // Save back to preferences
-            trackingPrefs.edit()
-                .putString(storageKey, blockAttemptsData.toString())
-                .apply()
-            
-            Log.v(TAG, "Tracked block attempt for $packageName: ${currentCount + 1} on $today")
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Error tracking daily block attempt: ${e.message}", e)
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                val trackingPrefs = getSharedPreferences("usage_tracking", Context.MODE_PRIVATE)
+                val calendar = Calendar.getInstance()
+                val today = "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.MONTH) + 1}-${calendar.get(Calendar.DAY_OF_MONTH)}"
+                
+                val storageKey = "block_attempts_$today"
+                val existingDataJson = trackingPrefs.getString(storageKey, "{}")
+                val blockAttemptsData = JSONObject(existingDataJson ?: "{}")
+                
+                val currentCount = blockAttemptsData.optInt(packageName, 0)
+                blockAttemptsData.put(packageName, currentCount + 1)
+                
+                trackingPrefs.edit()
+                    .putString(storageKey, blockAttemptsData.toString())
+                    .apply()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error tracking daily block attempt: ${e.message}")
+            }
         }
     }
 
     private fun launchBlockOverlay(packageName: String, blockReason: String? = null) {
         val intent = Intent(this, BlockOverlayActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
-            addFlags(Intent.FLAG_ACTIVITY_NO_HISTORY)
+            // Using REORDER_TO_FRONT and SINGLE_TOP to bring existing instance to front 
+            // instead of recreating and causing flicker
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or 
+                     Intent.FLAG_ACTIVITY_SINGLE_TOP or 
+                     Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
             putExtra("blocked_package", packageName)
             if (blockReason != null) {
                 putExtra("block_reason", blockReason)

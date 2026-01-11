@@ -10,28 +10,53 @@ import android.graphics.drawable.Drawable
 import java.io.ByteArrayOutputStream
 
 class AppInfoUtil(private val context: Context) {
+    
+    companion object {
+        private val iconCache = mutableMapOf<String, ByteArray>()
+        private var appsCache: List<Map<String, Any>>? = null
+        private var lastAppsCacheTime = 0L
+        private const val CACHE_DURATION = 300000L // 5 minutes
+    }
 
     // Get all installed apps
-    fun getInstalledApps(): List<Map<String, Any>> {
+    fun getInstalledApps(includeIcons: Boolean = true): List<Map<String, Any>> {
+        val currentTime = System.currentTimeMillis()
+        if (appsCache != null && (currentTime - lastAppsCacheTime) < CACHE_DURATION) {
+            return appsCache!!
+        }
+
         val packageManager = context.packageManager
         val apps = mutableListOf<Map<String, Any>>()
 
+        // Use GET_META_DATA only if needed
         val packages = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
 
         for (packageInfo in packages) {
             // Skip our own app
             if (packageInfo.packageName == context.packageName) continue
 
+            // Only include launchable apps to reduce count and noise
+            if (packageManager.getLaunchIntentForPackage(packageInfo.packageName) == null) continue
+
             val appName = packageManager.getApplicationLabel(packageInfo).toString()
             val packageName = packageInfo.packageName
             val isSystemApp = (packageInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
 
-            // Get app icon as byte array
-            val icon = try {
-                val drawable = packageManager.getApplicationIcon(packageInfo)
-                drawableToByteArray(drawable)
-            } catch (e: Exception) {
-                null
+            // Get app icon (with caching)
+            var icon: ByteArray? = null
+            if (includeIcons) {
+                icon = iconCache[packageName]
+                if (icon == null) {
+                    icon = try {
+                        val drawable = packageManager.getApplicationIcon(packageInfo)
+                        drawableToByteArray(drawable)
+                    } catch (e: Exception) {
+                        null
+                    }
+                    if (icon != null) {
+                        iconCache[packageName] = icon
+                    }
+                }
             }
 
             val appMap: Map<String, Any> = mapOf(
@@ -44,30 +69,31 @@ class AppInfoUtil(private val context: Context) {
             apps.add(appMap)
         }
 
-        // Sort by app name
-        return apps.sortedBy { it["appName"] as String }
+        val result = apps.sortedBy { it["appName"] as String }
+        appsCache = result
+        lastAppsCacheTime = currentTime
+        return result
     }
 
-    // Convert Drawable to ByteArray
+    // Convert Drawable to ByteArray with optimization
     private fun drawableToByteArray(drawable: Drawable): ByteArray? {
         val bitmap = if (drawable is BitmapDrawable) {
             drawable.bitmap
         } else {
-            // Create bitmap from drawable
-            val bitmap = Bitmap.createBitmap(
-                drawable.intrinsicWidth,
-                drawable.intrinsicHeight,
-                Bitmap.Config.ARGB_8888
-            )
+            // Use fixed smaller size for icons to save memory and processing time
+            val width = if (drawable.intrinsicWidth > 0) Math.min(drawable.intrinsicWidth, 128) else 128
+            val height = if (drawable.intrinsicHeight > 0) Math.min(drawable.intrinsicHeight, 128) else 128
+            
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             drawable.setBounds(0, 0, canvas.width, canvas.height)
             drawable.draw(canvas)
             bitmap
         }
 
-        // Compress bitmap to reduce size
         val stream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        // Compression quality 80 is enough for app icons
+        bitmap.compress(Bitmap.CompressFormat.PNG, 80, stream)
         return stream.toByteArray()
     }
 
@@ -79,6 +105,16 @@ class AppInfoUtil(private val context: Context) {
             packageManager.getApplicationLabel(appInfo).toString()
         } catch (e: PackageManager.NameNotFoundException) {
             packageName
+        }
+    }
+
+    // Get app icon from package name
+    fun getAppIcon(packageName: String): Drawable? {
+        return try {
+            val packageManager = context.packageManager
+            packageManager.getApplicationIcon(packageName)
+        } catch (e: PackageManager.NameNotFoundException) {
+            null
         }
     }
 }
