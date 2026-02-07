@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:block_app/core/DI/setup_get_it.dart';
-import 'package:block_app/core/router/app_routes.dart';
+import 'package:app_block/core/DI/setup_get_it.dart';
+import 'package:app_block/core/router/app_routes.dart';
 import '../focus_mode_card.dart'; // For FocusModeType
-import 'package:block_app/feature/ui/view_model/custom_focus_mode_cubit/custom_focus_mode_cubit.dart';
-import 'package:block_app/feature/ui/view_model/custom_focus_mode_cubit/custom_focus_mode_state.dart';
+import 'package:app_block/feature/ui/view_model/custom_focus_mode_cubit/custom_focus_mode_cubit.dart';
+import 'package:app_block/feature/ui/view_model/custom_focus_mode_cubit/custom_focus_mode_state.dart';
 import 'saved_custom_mode_card.dart';
 
 class ModesRow extends StatelessWidget {

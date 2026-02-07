@@ -93,4 +93,18 @@ class PermissionUtil(private val activity: Activity) {
         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
         activity.startActivity(intent)
     }
+
+    // Check if Notification Listener permission is granted
+    fun hasNotificationListenerPermission(): Boolean {
+        val contentResolver = activity.contentResolver
+        val enabledNotificationListeners = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
+        val packageName = activity.packageName
+        return enabledNotificationListeners != null && enabledNotificationListeners.contains(packageName)
+    }
+
+    // Request Notification Listener permission
+    fun requestNotificationListenerPermission() {
+        val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
+        activity.startActivity(intent)
+    }
 }

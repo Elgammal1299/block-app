@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/DI/setup_get_it.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../view_model/app_list_cubit/app_list_cubit.dart';
 import '../../view_model/app_list_cubit/app_list_state.dart';
 import '../../view_model/focus_mode_config_cubit/focus_mode_config_cubit.dart';
@@ -50,7 +51,7 @@ class _FocusModeAppSelectionScreenState
         });
       }
     } catch (e) {
-      print('Error loading current selection: $e');
+      AppLogger.e('Error loading current selection', e);
     } finally {
       setState(() => _isLoading = false);
     }

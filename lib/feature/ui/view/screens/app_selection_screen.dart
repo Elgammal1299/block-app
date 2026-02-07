@@ -95,168 +95,131 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
 
     // Navigate to schedule selection screen
     if (mounted) {
-      Navigator.of(context).pushNamed(
-        '/app-schedule-selection',
-        arguments: blockedApps,
-      );
+      Navigator.of(
+        context,
+      ).pushNamed('/app-schedule-selection', arguments: blockedApps);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Select Apps to Block'),
-        actions: [
-          if (_selectedPackages.isNotEmpty)
-            TextButton.icon(
-              onPressed: _saveSelection,
-              icon: const Icon(Icons.check, color: Colors.white),
-              label: Text(
-                'Save (${_selectedPackages.length})',
-                style: const TextStyle(color: Colors.white),
-              ),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_forward_ios, color: Colors.blue),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: const Text(
+            'قائمة الحظر',
+            style: TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
             ),
-        ],
-      ),
-      body: BlocBuilder<AppListCubit, AppListState>(
-        bloc: getIt<AppListCubit>(),
-        builder: (context, state) {
-          return Column(
-            children: [
-              // Search Bar
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search apps...',
-                    prefixIcon: const Icon(Icons.search),
-                    filled: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  onChanged: (value) {
-                    getIt<AppListCubit>().setSearchQuery(value);
-                  },
-                ),
-              ),
-
-              // Show System Apps Toggle
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
-                  children: [
-                    const Icon(Icons.settings_applications, size: 20),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Show system apps',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    const Spacer(),
-                    Switch(
-                      value: state is AppListLoaded ? state.showSystemApps : false,
-                      onChanged: (value) {
-                        getIt<AppListCubit>().toggleShowSystemApps();
-                      },
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              // Tabs
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: TabBar(
+          ),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.search, color: Colors.blue),
+              onPressed: () {
+                // Implementation of search toggle
+              },
+            ),
+          ],
+        ),
+        body: BlocBuilder<AppListCubit, AppListState>(
+          bloc: getIt<AppListCubit>(),
+          builder: (context, state) {
+            return Column(
+              children: [
+                // Tabs
+                TabBar(
                   controller: _tabController,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  dividerColor: Colors.transparent,
-                  indicator: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
-                    borderRadius: BorderRadius.circular(12),
+                  indicatorColor: Colors.blue,
+                  indicatorWeight: 3,
+                  labelColor: Colors.blue,
+                  unselectedLabelColor: Colors.grey,
+                  labelStyle: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Theme.of(context).colorScheme.onSurface,
                   tabs: const [
-                    Tab(
-                      icon: Icon(Icons.apps),
-                      text: 'All Apps',
-                    ),
-                    Tab(
-                      icon: Icon(Icons.category),
-                      text: 'Categories',
-                    ),
+                    Tab(text: 'التطبيقات'),
+                    Tab(text: 'الفئات'),
                   ],
                 ),
-              ),
 
-              // Selected Count Badge
-              if (_selectedPackages.isNotEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
-                      ],
+                // Search Bar
+                if (state is AppListLoaded)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 8.0,
                     ),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${_selectedPackages.length} apps selected',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'البحث عن تطبيقات...',
+                        prefixIcon: const Icon(Icons.search),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
                         ),
                       ),
+                      onChanged: (value) {
+                        getIt<AppListCubit>().setSearchQuery(value);
+                      },
+                    ),
+                  ),
+
+                // Tab Content
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildAllAppsTab(state),
+                      _buildCategoriesTab(state),
                     ],
                   ),
                 ),
 
-              // Tab Content
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildAllAppsTab(state),
-                    _buildCategoriesTab(state),
-                  ],
+                // Bottom Save Button
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 55,
+                    child: ElevatedButton(
+                      onPressed: _saveSelection,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[600],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'حفظ',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
-      floatingActionButton: _selectedPackages.isNotEmpty
-          ? FloatingActionButton.extended(
-              onPressed: _saveSelection,
-              icon: const Icon(Icons.check),
-              label: Text(
-                'Block ${_selectedPackages.length} Apps',
-              ),
-            )
-          : null,
     );
   }
 
@@ -275,26 +238,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
       return const Center(child: CircularProgressIndicator());
     } else if (state is AppListLoaded) {
       if (state.apps.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.apps_outlined,
-                size: 80,
-                color: Colors.grey.withValues(alpha: 0.5),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No apps found',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.grey.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
-          ),
-        );
+        return _buildEmptyState();
       }
       return ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -306,21 +250,42 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
         },
       );
     } else if (state is AppListError) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 80, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(
-              'Error: ${state.message}',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
+      return _buildErrorState(state.message);
     }
     return const Center(child: CircularProgressIndicator());
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.apps_outlined,
+            size: 80,
+            color: Colors.grey.withOpacity(0.5),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'لم يتم العثور على تطبيقات',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 80, color: Colors.red),
+          const SizedBox(height: 16),
+          Text('خطأ: $message', textAlign: TextAlign.center),
+        ],
+      ),
+    );
   }
 
   Widget _buildExpandableCategoriesList(AppListState state) {
@@ -328,26 +293,7 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
       return const Center(child: CircularProgressIndicator());
     } else if (state is AppListLoaded) {
       if (state.apps.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.apps_outlined,
-                size: 80,
-                color: Colors.grey.withValues(alpha: 0.5),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No apps found',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: Colors.grey.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
-          ),
-        );
+        return _buildEmptyState();
       }
 
       // Group apps by their categories
@@ -362,159 +308,131 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
         }
       }
 
-      return ListView.builder(
+      // Sort categories: "Others" at the end, then alphabetically by name
+      final sortedCategories = groupedApps.keys.toList()
+        ..sort((a, b) {
+          if (a == AppCategory.others) return 1;
+          if (b == AppCategory.others) return -1;
+          return a.displayName.compareTo(b.displayName);
+        });
+
+      return ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: groupedApps.length,
+        itemCount: sortedCategories.length,
+        separatorBuilder: (context, index) =>
+            const Divider(height: 1, color: Color(0xFFEEEEEE)),
         itemBuilder: (context, index) {
-          final category = groupedApps.keys.elementAt(index);
+          final category = sortedCategories[index];
           final categoryApps = groupedApps[category]!;
           final isExpanded = _expandedCategories[category] ?? false;
 
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                // Category Header
-                InkWell(
-                  onTap: () {
-                    setState(() {
-                      _expandedCategories[category] = !isExpanded;
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                          Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            category.icon,
-                            size: 24,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                category.displayName,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.onSurface,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${categoryApps.length} تطبيق',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.withValues(alpha: 0.8),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            '${categoryApps.length}',
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onPrimary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          isExpanded ? Icons.expand_less : Icons.expand_more,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 28,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+          final bool allSelected =
+              categoryApps.isNotEmpty &&
+              categoryApps.every(
+                (app) => _selectedPackages.contains(app.packageName),
+              );
+          final bool someSelected =
+              categoryApps.any(
+                (app) => _selectedPackages.contains(app.packageName),
+              ) &&
+              !allSelected;
 
-                // Category Apps (Expandable)
-                AnimatedCrossFade(
-                  firstChild: const SizedBox.shrink(),
-                  secondChild: Container(
-                    padding: const EdgeInsets.all(8),
-                    child: Column(
-                      children: categoryApps.map((app) {
-                        final isSelected = _selectedPackages.contains(app.packageName);
-                        return _buildAppItem(app, isSelected);
-                      }).toList(),
-                    ),
+          return Column(
+            children: [
+              // Category Header
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _expandedCategories[category] = !isExpanded;
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12.0),
+                  child: Row(
+                    children: [
+                      // Checkbox for category (left)
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: Checkbox(
+                          value: allSelected,
+                          tristate: someSelected,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              if (value == true) {
+                                for (var app in categoryApps) {
+                                  _selectedPackages.add(app.packageName);
+                                }
+                              } else {
+                                for (var app in categoryApps) {
+                                  _selectedPackages.remove(app.packageName);
+                                }
+                              }
+                            });
+                          },
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          activeColor: Colors.blue,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Text in the middle
+                      Expanded(
+                        child: Text(
+                          category.displayName,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                          textAlign: TextAlign.right,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Icon to the right of text
+                      Icon(category.icon, size: 24, color: category.color),
+                      const SizedBox(width: 12),
+                      // Arrow icon (far right)
+                      Icon(
+                        isExpanded
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
+                        color: Colors.grey[400],
+                        size: 24,
+                      ),
+                    ],
                   ),
-                  crossFadeState: isExpanded
-                      ? CrossFadeState.showSecond
-                      : CrossFadeState.showFirst,
-                  duration: const Duration(milliseconds: 300),
                 ),
-              ],
-            ),
+              ),
+
+              // Category Apps
+              if (isExpanded)
+                Padding(
+                  padding: const EdgeInsets.only(right: 32.0),
+                  child: Column(
+                    children: categoryApps.map((app) {
+                      final isSelected = _selectedPackages.contains(
+                        app.packageName,
+                      );
+                      return _buildAppItem(app, isSelected);
+                    }).toList(),
+                  ),
+                ),
+            ],
           );
         },
       );
     } else if (state is AppListError) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 80, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(
-              'Error: ${state.message}',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
+      return _buildErrorState(state.message);
     }
     return const Center(child: CircularProgressIndicator());
   }
 
   Widget _buildAppItem(AppInfo app, bool isSelected) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      elevation: isSelected ? 3 : 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: isSelected
-            ? BorderSide(
-                color: Theme.of(context).colorScheme.primary,
-                width: 2,
-              )
-            : BorderSide.none,
-      ),
-      child: CheckboxListTile(
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Checkbox(
         value: isSelected,
         onChanged: (bool? value) {
           setState(() {
@@ -525,70 +443,38 @@ class _AppSelectionScreenState extends State<AppSelectionScreen>
             }
           });
         },
-        title: Text(
-          app.appName,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-          ),
-        ),
-        subtitle: Text(
-          app.packageName,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.withValues(alpha: 0.8),
-          ),
-        ),
-        secondary: app.icon != null && app.icon!.isNotEmpty
-            ? Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.memory(
-                    app.icon!,
-                    width: 48,
-                    height: 48,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.apps,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              )
-            : Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.apps,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-        activeColor: Theme.of(context).colorScheme.primary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        activeColor: Colors.blue,
       ),
+      title: Text(
+        app.appName,
+        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+        textAlign: TextAlign.right,
+      ),
+      subtitle: Text(
+        app.packageName,
+        style: TextStyle(fontSize: 11, color: Colors.grey.withOpacity(0.8)),
+        textAlign: TextAlign.right,
+      ),
+      trailing: app.icon != null && app.icon!.isNotEmpty
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.memory(
+                app.icon!,
+                width: 32,
+                height: 32,
+                fit: BoxFit.cover,
+              ),
+            )
+          : Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.apps, color: Colors.blue, size: 18),
+            ),
     );
   }
 }

@@ -5,6 +5,8 @@ import '../models/comparison_stats.dart';
 import '../models/statistics_dashboard_data.dart';
 import '../models/hourly_usage_data.dart';
 import '../../../core/services/platform_channel_service.dart';
+import '../../../core/utils/app_logger.dart';
+import '../../../core/utils/request_cache.dart';
 import 'app_repository.dart';
 import 'statistics_isolate_helper.dart';
 
@@ -17,6 +19,13 @@ class StatisticsRepository {
   // Cache for app icons
   Map<String, Uint8List?> _appIconsCache = {};
   bool _iconsCacheInitialized = false;
+
+  // Phase 2: Request-level caching for platform channel calls
+  late final RequestCache<Map<String, dynamic>> _dailyStatsCache =
+      RequestCache<Map<String, dynamic>>(
+    ttl: const Duration(seconds: 1),
+    maxEntries: 10,
+  );
 
   StatisticsRepository(
     this._databaseService,
@@ -36,7 +45,7 @@ class StatisticsRepository {
       await _databaseService.cleanupOldData();
     } catch (e) {
       // Log error but don't throw - snapshot saving shouldn't crash the app
-      print('Error processing pending snapshots: $e');
+      AppLogger.e('Error processing pending snapshots', e);
     }
   }
 
@@ -50,7 +59,7 @@ class StatisticsRepository {
         return;
       }
 
-      print('Processing ${pendingDates.length} pending snapshots from Native');
+      AppLogger.i('Processing ${pendingDates.length} pending snapshots from Native');
 
       for (final dateStr in pendingDates) {
         try {
@@ -70,7 +79,7 @@ class StatisticsRepository {
           );
 
           if (usageMap.isEmpty) {
-            print('No data found for pending snapshot: $dateStr');
+            AppLogger.w('No data found for pending snapshot: $dateStr');
             continue;
           }
 
@@ -102,19 +111,19 @@ class StatisticsRepository {
           // Save to database
           if (statsList.isNotEmpty) {
             await _databaseService.saveDailyUsageSnapshot(statsList, dateStr);
-            print(
+            AppLogger.i(
               'Saved pending snapshot for $dateStr (${statsList.length} apps)',
             );
           }
         } catch (e) {
-          print('Error processing pending snapshot for $dateStr: $e');
+          AppLogger.e('Error processing pending snapshot for $dateStr', e);
         }
       }
 
       // Clear pending snapshots after processing
       await _platformService.clearPendingSnapshotDates();
     } catch (e) {
-      print('Error processing pending snapshots: $e');
+      AppLogger.e('Error processing pending snapshots', e);
     }
   }
 
@@ -381,7 +390,7 @@ class StatisticsRepository {
 
       return statsList;
     } catch (e) {
-      print('Error getting usage for period: $e');
+      AppLogger.e('Error getting usage for period', e);
       return [];
     }
   }
@@ -656,7 +665,7 @@ class StatisticsRepository {
 
       return hourlyDataMaps.map((map) => HourlyUsageData.fromMap(map)).toList();
     } catch (e) {
-      print('Error getting hourly usage data: $e');
+      AppLogger.e('Error getting hourly usage data', e);
       // Return empty hourly data (24 hours with 0 usage)
       return List.generate(24, (hour) => HourlyUsageData.empty(hour));
     }
@@ -680,7 +689,7 @@ class StatisticsRepository {
 
       return hourlyDataMaps.map((map) => HourlyUsageData.fromMap(map)).toList();
     } catch (e) {
-      print('Error getting hourly usage data for period: $e');
+      AppLogger.e('Error getting hourly usage data for period', e);
       // Return empty hourly data (24 hours with 0 usage)
       return List.generate(24, (hour) => HourlyUsageData.empty(hour));
     }
@@ -697,31 +706,33 @@ class StatisticsRepository {
       }
       _iconsCacheInitialized = true;
     } catch (e) {
-      print('Error initializing icons cache: $e');
+      AppLogger.e('Error initializing icons cache', e);
     }
   }
 
   /// Get today's usage from platform service
-  /// Uses unified data source: UsageTrackingService (real-time) with UsageStats API fallback
+  /// Phase 2 Optimization: Uses batched getDailyStats call with request caching
+  /// Combines getTodayUsageFromTrackingService + getTodaySessionCountsFromTracking
+  /// + getTodayBlockAttemptsFromTracking into a single native call
+  /// Result is cached for 1 second (prevents redundant native calls)
   Future<List<AppUsageStats>> _getTodayUsage() async {
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
 
-    // Try to get data from UsageTrackingService first (more accurate, real-time)
-    Map<String, int> statsMap = await _platformService
-        .getTodayUsageFromTrackingService();
+    // Phase 2: Use batched call with request caching
+    // This eliminates 3 separate platform channel calls into 1 cached call
+    final dailyStats = await _dailyStatsCache.get(
+      'daily_stats',
+      () => _platformService.getDailyStats(),
+    );
 
-    // ✨ Get session counts (number of times apps were opened)
-    Map<String, int> sessionCounts = await _platformService
-        .getTodaySessionCountsFromTracking();
-
-    // ✨ NEW: Get block attempts (number of times user tried to open blocked apps)
-    Map<String, int> blockAttempts = await _platformService
-        .getTodayBlockAttemptsFromTracking();
+    Map<String, int> statsMap = dailyStats['usage'] ?? {};
+    Map<String, int> sessionCounts = dailyStats['sessions'] ?? {};
+    Map<String, int> blockAttempts = dailyStats['blockAttempts'] ?? {};
 
     // If UsageTrackingService data is empty or stale, fallback to UsageStats API
     if (statsMap.isEmpty) {
-      print('Falling back to UsageStats API for today\'s data');
+      AppLogger.i('Falling back to UsageStats API for today\'s data');
       statsMap = await _platformService.getAppUsageStats(startOfDay, now);
 
       // ✨ Also fallback for session counts
@@ -729,11 +740,11 @@ class StatisticsRepository {
 
       // Block attempts don't have fallback (only tracked by AccessibilityService)
     } else {
-      print(
-        'Using real-time data from UsageTrackingService (${statsMap.length} apps)',
+      AppLogger.i(
+        'Using real-time data from UsageTrackingService (${statsMap.length} apps) - cached',
       );
-      print('Retrieved session counts for ${sessionCounts.length} apps');
-      print('Retrieved block attempts for ${blockAttempts.length} apps');
+      AppLogger.i('Retrieved session counts for ${sessionCounts.length} apps - cached');
+      AppLogger.i('Retrieved block attempts for ${blockAttempts.length} apps - cached');
     }
 
     // Filter out our own app (safety check in case native filter missed it)

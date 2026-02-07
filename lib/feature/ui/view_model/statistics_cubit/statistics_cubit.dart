@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/models/comparison_stats.dart';
 import '../../../data/repositories/statistics_repository.dart';
 import '../../../../core/services/platform_channel_service.dart';
+import '../../../../core/utils/app_logger.dart';
 import 'statistics_state.dart';
 
 /// Cubit for managing statistics dashboard state
@@ -146,10 +147,10 @@ class StatisticsCubit extends Cubit<StatisticsState> {
   Future<void> cleanOwnAppFromStatistics() async {
     try {
       await _platformService.cleanStoredUsageData();
-      print('Successfully cleaned own app from statistics');
+      AppLogger.i('Successfully cleaned own app from statistics');
     } catch (e) {
       // Silent fail - don't disrupt the app
-      print('Error cleaning own app from statistics: $e');
+      AppLogger.w('Error cleaning own app from statistics: $e');
     }
   }
 

@@ -173,7 +173,7 @@ class DatabaseService {
   Future<Map<String, List<AppUsageStats>>> getUsageByDates(
     List<String> dates,
   ) async {
-    final db = await database;
+    await database;
     final Map<String, List<AppUsageStats>> result = {};
 
     for (final date in dates) {

@@ -1,4 +1,4 @@
-name: block_app
+name: app_block
 description: "A new Flutter project."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
@@ -36,6 +36,7 @@ dependencies:
   # Crypto for PIN hashing
   crypto: ^3.0.3
   get_it: ^9.2.0
+  logger: ^2.6.2
 
 
 dev_dependencies:

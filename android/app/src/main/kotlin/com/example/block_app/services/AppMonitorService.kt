@@ -129,7 +129,11 @@ class AppMonitorService : Service() {
     private fun checkSchedulesAndUpdate() {
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val schedulesJson = prefs.getString(KEY_SCHEDULES, null)
-        val blockedAppsJson = prefs.getString(KEY_BLOCKED_APPS, null)
+        val blockedAppsJson = try {
+            prefs.getString(KEY_BLOCKED_APPS, null)
+        } catch (e: ClassCastException) {
+            null
+        }
 
         if (schedulesJson == null || blockedAppsJson == null) {
             return

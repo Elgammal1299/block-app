@@ -9,10 +9,11 @@ enum AppCategory {
   productivity('الإنتاجية', Icons.work, Colors.green),
   communication('التواصل', Icons.chat, Colors.teal),
   shopping('التسوق', Icons.shopping_cart, Colors.orange),
-  news('الأخبار', Icons.newspaper, Colors.indigo);
+  news('الأخبار', Icons.newspaper, Colors.indigo),
+  others('أخرى', Icons.more_horiz, Colors.blueGrey);
 
   const AppCategory(this.displayName, this.icon, this.color);
-  
+
   final String displayName;
   final IconData icon;
   final Color color;
@@ -38,7 +39,7 @@ class AppCategoryFilter extends StatelessWidget {
         itemBuilder: (context, index) {
           final category = AppCategory.values[index];
           final isSelected = category == selectedCategory;
-          
+
           return Container(
             margin: const EdgeInsets.symmetric(horizontal: 4),
             child: FilterChip(
@@ -48,9 +49,7 @@ class AppCategoryFilter extends StatelessWidget {
                   Icon(
                     category.icon,
                     size: 18,
-                    color: isSelected 
-                        ? Colors.white
-                        : category.color,
+                    color: isSelected ? Colors.white : category.color,
                   ),
                   const SizedBox(width: 6),
                   Text(category.displayName),
@@ -65,9 +64,7 @@ class AppCategoryFilter extends StatelessWidget {
               backgroundColor: Theme.of(context).colorScheme.surface,
               selectedColor: category.color,
               labelStyle: TextStyle(
-                color: isSelected 
-                    ? Colors.white
-                    : category.color,
+                color: isSelected ? Colors.white : category.color,
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
@@ -79,108 +76,87 @@ class AppCategoryFilter extends StatelessWidget {
 }
 
 class AppCategoryHelper {
+  static final Map<AppCategory, List<String>> _categoryKeywords = {
+    AppCategory.social: [
+      'facebook',
+      'instagram',
+      'twitter',
+      'snapchat',
+      'tiktok',
+      'whatsapp',
+      'telegram',
+    ],
+    AppCategory.games: [
+      'game',
+      'play',
+      'puzzle',
+      'racing',
+      'casino',
+      'betting',
+      'arcade',
+    ],
+    AppCategory.entertainment: [
+      'youtube',
+      'netflix',
+      'spotify',
+      'video',
+      'music',
+      'stream',
+      'tv',
+      'movie',
+    ],
+    AppCategory.productivity: [
+      'office',
+      'document',
+      'calendar',
+      'email',
+      'note',
+      'tool',
+      'calculator',
+      'clock',
+    ],
+    AppCategory.communication: [
+      'messenger',
+      'message',
+      'call',
+      'phone',
+      'contact',
+      'mail',
+    ],
+    AppCategory.shopping: [
+      'amazon',
+      'shop',
+      'store',
+      'buy',
+      'cart',
+      'market',
+      'commerce',
+    ],
+    AppCategory.news: ['news', 'journal', 'article', 'paper', 'daily'],
+  };
+
   static AppCategory getAppCategory(AppInfo app) {
-    final packageName = app.packageName.toLowerCase();
-    final appName = app.appName.toLowerCase();
-    
-    // Social media
-    if (packageName.contains('facebook') || 
-        packageName.contains('instagram') ||
-        packageName.contains('twitter') ||
-        packageName.contains('snapchat') ||
-        packageName.contains('tiktok') ||
-        packageName.contains('whatsapp') ||
-        packageName.contains('telegram') ||
-        appName.contains('facebook') ||
-        appName.contains('instagram') ||
-        appName.contains('twitter') ||
-        appName.contains('snapchat') ||
-        appName.contains('tiktok') ||
-        appName.contains('whatsapp') ||
-        appName.contains('telegram')) {
-      return AppCategory.social;
+    final text = '${app.appName} ${app.packageName}'.toLowerCase();
+
+    // Ordered check for priority and anti-duplication
+    for (final entry in _categoryKeywords.entries) {
+      if (entry.value.any((keyword) => text.contains(keyword))) {
+        return entry.key;
+      }
     }
-    
-    // Games
-    if (packageName.contains('game') || 
-        appName.contains('game') ||
-        packageName.contains('play') ||
-        appName.contains('play') ||
-        packageName.contains('puzzle') ||
-        appName.contains('puzzle') ||
-        packageName.contains('racing') ||
-        appName.contains('racing')) {
-      return AppCategory.games;
-    }
-    
-    // Entertainment
-    if (packageName.contains('youtube') || 
-        packageName.contains('netflix') ||
-        packageName.contains('spotify') ||
-        packageName.contains('video') ||
-        packageName.contains('music') ||
-        appName.contains('youtube') ||
-        appName.contains('netflix') ||
-        appName.contains('spotify') ||
-        appName.contains('video') ||
-        appName.contains('music')) {
-      return AppCategory.entertainment;
-    }
-    
-    // Productivity
-    if (packageName.contains('office') || 
-        packageName.contains('document') ||
-        packageName.contains('calendar') ||
-        packageName.contains('email') ||
-        appName.contains('office') ||
-        appName.contains('document') ||
-        appName.contains('calendar') ||
-        appName.contains('email')) {
-      return AppCategory.productivity;
-    }
-    
-    // Communication
-    if (packageName.contains('messenger') || 
-        packageName.contains('message') ||
-        packageName.contains('call') ||
-        packageName.contains('phone') ||
-        appName.contains('messenger') ||
-        appName.contains('message') ||
-        appName.contains('call') ||
-        appName.contains('phone')) {
-      return AppCategory.communication;
-    }
-    
-    // Shopping
-    if (packageName.contains('amazon') || 
-        packageName.contains('shop') ||
-        packageName.contains('store') ||
-        packageName.contains('buy') ||
-        appName.contains('amazon') ||
-        appName.contains('shop') ||
-        appName.contains('store') ||
-        appName.contains('buy')) {
-      return AppCategory.shopping;
-    }
-    
-    // News
-    if (packageName.contains('news') || 
-        packageName.contains('journal') ||
-        packageName.contains('article') ||
-        appName.contains('news') ||
-        appName.contains('journal') ||
-        appName.contains('article')) {
-      return AppCategory.news;
-    }
-    
-    return AppCategory.all;
+
+    // Default fallback to "others" (NOT "all")
+    return AppCategory.others;
   }
-  
-  static List<AppInfo> filterAppsByCategory(List<AppInfo> apps, AppCategory category) {
+
+  static List<AppInfo> filterAppsByCategory(
+    List<AppInfo> apps,
+    AppCategory category,
+  ) {
     if (category == AppCategory.all) {
       return apps;
     }
-    
+
     return apps.where((app) => getAppCategory(app) == category).toList();
   }
 }

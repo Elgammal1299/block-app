@@ -19,6 +19,7 @@ class AppRoutes {
 
   // Schedule routes
   static const schedules = '/schedules';
+  static const createSchedule = '/create-schedule';
 
   // Focus session routes
   static const focusLists = '/focus-lists';
@@ -32,4 +33,5 @@ class AppRoutes {
 
   // Settings routes
   static const blockScreenStyle = '/block-screen-style';
+  static const settings = '/settings';
 }

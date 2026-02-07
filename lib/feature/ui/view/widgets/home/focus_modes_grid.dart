@@ -83,10 +83,7 @@ class FocusModesGrid extends StatelessWidget {
       );
     } else {
       // Navigate to quick mode details screen
-      Navigator.of(context).pushNamed(
-        '/quick-mode-details',
-        arguments: mode,
-      );
+      Navigator.of(context).pushNamed('/quick-mode-details', arguments: mode);
     }
   }
 }

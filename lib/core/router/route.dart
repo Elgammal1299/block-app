@@ -1,27 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:block_app/core/router/app_routes.dart';
-import 'package:block_app/core/router/router_transitions.dart';
-import 'package:block_app/feature/ui/view/screens/permissions_guide_screen.dart';
-import 'package:block_app/feature/nav_bar/nav_bar_screen.dart';
-import 'package:block_app/feature/ui/view/screens/app_selection_screen.dart';
-import 'package:block_app/feature/ui/view/screens/schedule_screen.dart';
-import 'package:block_app/feature/ui/view/screens/app_schedule_selection_screen.dart';
-import 'package:block_app/feature/ui/view/screens/blocked_apps_list_screen.dart';
-import 'package:block_app/feature/ui/view/screens/usage_limit_selection_screen.dart';
-import 'package:block_app/feature/ui/view/screens/focus_lists_screen.dart';
-import 'package:block_app/feature/ui/view/screens/focus_list_detail_screen.dart';
-import 'package:block_app/feature/ui/view/screens/create_focus_list_screen.dart';
-import 'package:block_app/feature/ui/view/screens/active_session_screen.dart';
-import 'package:block_app/feature/ui/view/screens/focus_history_screen.dart';
-import 'package:block_app/feature/ui/view/screens/statistics_dashboard_screen.dart';
-import 'package:block_app/feature/ui/view/screens/quick_block_settings_screen.dart';
-import 'package:block_app/feature/ui/view/screens/app_selection_quick_block_screen.dart';
-import 'package:block_app/feature/ui/view/screens/quick_mode_details_screen.dart';
-import 'package:block_app/feature/ui/view/screens/focus_mode_app_selection_screen.dart';
-import 'package:block_app/feature/ui/view/screens/block_screen_style_screen.dart';
-import 'package:block_app/feature/ui/view/widgets/focus_mode_card.dart';
-import 'package:block_app/feature/data/models/blocked_app.dart';
-import 'package:block_app/feature/data/models/focus_list.dart';
+import 'package:app_block/core/router/app_routes.dart';
+import 'package:app_block/core/router/router_transitions.dart';
+import 'package:app_block/feature/ui/view/screens/permissions_guide_screen.dart';
+import 'package:app_block/feature/nav_bar/nav_bar_screen.dart';
+import 'package:app_block/feature/ui/view/screens/app_selection_screen.dart';
+import 'package:app_block/feature/ui/view/screens/schedule_screen.dart';
+import 'package:app_block/feature/ui/view/screens/app_schedule_selection_screen.dart';
+import 'package:app_block/feature/ui/view/screens/blocked_apps_list_screen.dart';
+import 'package:app_block/feature/ui/view/screens/usage_limit_selection_screen.dart';
+import 'package:app_block/feature/ui/view/screens/focus_lists_screen.dart';
+import 'package:app_block/feature/ui/view/screens/focus_list_detail_screen.dart';
+import 'package:app_block/feature/ui/view/screens/create_focus_list_screen.dart';
+import 'package:app_block/feature/ui/view/screens/active_session_screen.dart';
+import 'package:app_block/feature/ui/view/screens/focus_history_screen.dart';
+import 'package:app_block/feature/ui/view/screens/statistics_dashboard_screen.dart';
+import 'package:app_block/feature/ui/view/screens/quick_block_settings_screen.dart';
+import 'package:app_block/feature/ui/view/screens/app_selection_quick_block_screen.dart';
+import 'package:app_block/feature/ui/view/screens/quick_mode_details_screen.dart';
+import 'package:app_block/feature/ui/view/screens/focus_mode_app_selection_screen.dart';
+import 'package:app_block/feature/ui/view/screens/block_screen_style_screen.dart';
+import 'package:app_block/feature/ui/view/screens/settings_screen.dart';
+import 'package:app_block/feature/ui/view/widgets/focus_mode_card.dart';
+import 'package:app_block/feature/ui/view/screens/create_schedule_screen.dart';
+import 'package:app_block/feature/data/models/blocked_app.dart';
+import 'package:app_block/feature/data/models/focus_list.dart';
 
 class AppRouter {
   static Route? generateRoute(RouteSettings settings) {
@@ -41,10 +43,14 @@ class AppRouter {
         return RouterTransitions.buildHorizontal(const AppSelectionScreen());
 
       case AppRoutes.quickBlockSettings:
-        return RouterTransitions.buildHorizontal(const QuickBlockSettingsScreen());
+        return RouterTransitions.buildHorizontal(
+          const QuickBlockSettingsScreen(),
+        );
 
       case AppRoutes.appSelectionForQuickBlock:
-        return RouterTransitions.buildHorizontal(const AppSelectionQuickBlockScreen());
+        return RouterTransitions.buildHorizontal(
+          const AppSelectionQuickBlockScreen(),
+        );
 
       case AppRoutes.quickModeDetails:
         final focusMode = settings.arguments as FocusModeType;
@@ -68,11 +74,16 @@ class AppRouter {
         return RouterTransitions.buildHorizontal(const BlockedAppsListScreen());
 
       case AppRoutes.usageLimitSelection:
-        return RouterTransitions.buildHorizontal(const UsageLimitSelectionScreen());
+        return RouterTransitions.buildHorizontal(
+          const UsageLimitSelectionScreen(),
+        );
 
       // Schedule routes
       case AppRoutes.schedules:
         return RouterTransitions.buildHorizontal(const ScheduleScreen());
+
+      case AppRoutes.createSchedule:
+        return RouterTransitions.buildHorizontal(const CreateScheduleScreen());
 
       // Focus session routes
       case AppRoutes.focusLists:
@@ -104,11 +115,18 @@ class AppRouter {
 
       // Statistics routes
       case AppRoutes.statisticsDashboard:
-        return RouterTransitions.buildHorizontal(const StatisticsDashboardScreen());
+        return RouterTransitions.buildHorizontal(
+          const StatisticsDashboardScreen(),
+        );
 
       // Settings routes
       case AppRoutes.blockScreenStyle:
-        return RouterTransitions.buildHorizontal(const BlockScreenStyleScreen());
+        return RouterTransitions.buildHorizontal(
+          const BlockScreenStyleScreen(),
+        );
+
+      case AppRoutes.settings:
+        return RouterTransitions.buildHorizontal(const SettingsScreen());
 
       default:
         return null;

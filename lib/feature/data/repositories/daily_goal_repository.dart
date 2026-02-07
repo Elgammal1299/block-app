@@ -1,6 +1,7 @@
 import 'dart:convert';
 import '../local/shared_prefs_service.dart';
 import '../models/daily_goal.dart';
+import '../../../core/utils/app_logger.dart';
 
 class DailyGoalRepository {
   final SharedPrefsService _prefsService;
@@ -26,7 +27,7 @@ class DailyGoalRepository {
         final goalData = jsonDecode(goalJson) as Map<String, dynamic>;
         return DailyGoal.fromJson(goalData);
       } catch (e) {
-        print('Error parsing daily goal: $e');
+        AppLogger.w('Error parsing daily goal: $e');
       }
     }
 
@@ -91,7 +92,7 @@ class DailyGoalRepository {
           final goalData = jsonDecode(goalJson) as Map<String, dynamic>;
           goals.add(DailyGoal.fromJson(goalData));
         } catch (e) {
-          print('Error parsing goal for $key: $e');
+          AppLogger.w('Error parsing goal for $key: $e');
         }
       }
     }
@@ -155,7 +156,7 @@ class DailyGoalRepository {
             }
           }
         } catch (e) {
-          print('Error parsing date from key $key: $e');
+          AppLogger.w('Error parsing date from key $key: $e');
         }
       }
     }

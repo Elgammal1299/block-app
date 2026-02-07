@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../local/shared_prefs_service.dart';
 import '../models/smart_suggestion.dart';
+import '../../../core/utils/app_logger.dart';
 import 'gamification_repository.dart';
 import 'daily_goal_repository.dart';
 
@@ -196,7 +197,7 @@ class SuggestionsRepository {
         final dismissedList = jsonDecode(dismissedJson) as List<dynamic>;
         return dismissedList.cast<String>();
       } catch (e) {
-        print('Error parsing dismissed suggestions: $e');
+        AppLogger.w('Error parsing dismissed suggestions: $e');
       }
     }
 

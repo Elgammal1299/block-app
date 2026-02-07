@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="motivational_quotes">
+        <item>"Discipline is the bridge between goals and accomplishment."</item>
+        <item>"Willpower is what gets you started, discipline is what keeps you going."</item>
+        <item>"Time is the only currency you have, spend it wisely."</item>
+        <item>"Success doesn't come from what you do occasionally, but from what you do consistently."</item>
+        <item>"Focus on your goals, crowded places don't make leaders."</item>
+        <item>"If you don't plan for success, you're planning for failure."</item>
+        <item>"Always remember why you started, and don't give in to trivialities."</item>
+        <item>"Every minute you spend in a blocked app is a minute wasted from your future."</item>
+        <item>"You control your phone, don't let your phone control you."</item>
+        <item>"Be the best version of yourself today."</item>
+    </string-array>
+</resources>

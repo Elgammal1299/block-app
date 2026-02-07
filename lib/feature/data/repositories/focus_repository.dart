@@ -5,6 +5,7 @@ import '../models/focus_session.dart';
 import '../models/focus_session_history.dart';
 import '../models/focus_session_status.dart';
 import '../../../core/services/platform_channel_service.dart';
+import '../../../core/utils/app_logger.dart';
 
 class FocusRepository {
   final SharedPrefsService _prefsService;
@@ -49,7 +50,6 @@ class FocusRepository {
 
     return false;
   }
-
 
   // ========== Focus Session Management ==========
 
@@ -106,8 +106,8 @@ class FocusRepository {
   }
 
   Future<bool> completeSession(FocusSession session) async {
-    // Update session status
-    final completedSession = session.copyWith(
+    // Update session status (model copy - not stored directly)
+    session.copyWith(
       status: FocusSessionStatus.completed,
       endTime: DateTime.now(),
     );
@@ -133,8 +133,8 @@ class FocusRepository {
   }
 
   Future<bool> cancelSession(FocusSession session) async {
-    // Update session status
-    final cancelledSession = session.copyWith(
+    // Update session status (model copy - not stored directly)
+    session.copyWith(
       status: FocusSessionStatus.cancelled,
       endTime: DateTime.now(),
     );
@@ -188,7 +188,7 @@ class FocusRepository {
       );
     } catch (e) {
       // Log error but don't fail the operation
-      print('Error syncing focus session to native: $e');
+      AppLogger.e('Error syncing focus session to native', e);
     }
   }
 }

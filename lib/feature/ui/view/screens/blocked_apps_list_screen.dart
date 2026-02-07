@@ -8,6 +8,13 @@ import '../../view_model/app_list_cubit/app_list_state.dart';
 import '../../../data/models/blocked_app.dart';
 import '../../../data/models/app_info.dart';
 import '../../../../core/localization/app_localizations.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../feature/data/repositories/settings_repository.dart';
+import '../widgets/blocked_app_card.dart';
+import '../widgets/empty_blocked_apps_message.dart';
+import '../widgets/loading_message.dart';
+import '../widgets/error_message.dart';
+import '../widgets/unlock_challenge_dialog.dart';
 
 class BlockedAppsListScreen extends StatefulWidget {
   const BlockedAppsListScreen({super.key});
@@ -28,12 +35,17 @@ class _BlockedAppsListScreenState extends State<BlockedAppsListScreen> {
 
   void _showRemoveDialog(BlockedApp app) {
     final localizations = AppLocalizations.of(context);
+    final currentContext = context;
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+      context: currentContext,
+      builder: (dialogContext) => AlertDialog(
         title: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange[700], size: 28),
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.orange[700],
+              size: 28,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -48,7 +60,7 @@ class _BlockedAppsListScreenState extends State<BlockedAppsListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Are you sure you want to unblock "${app.appName}"?',
+              localizations.translate('unblock_app_confirm').replaceAll('{appName}', app.appName),
               style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 12),
@@ -59,14 +71,14 @@ class _BlockedAppsListScreenState extends State<BlockedAppsListScreen> {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.orange[200]!),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.orange, size: 20),
-                  SizedBox(width: 8),
+                  const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'This app will no longer be blocked and can be used freely.',
-                      style: TextStyle(fontSize: 13, color: Colors.black87),
+                      localizations.unblockAppInfo,
+                      style: const TextStyle(fontSize: 13, color: Colors.black87),
                     ),
                   ),
                 ],
@@ -76,28 +88,53 @@ class _BlockedAppsListScreenState extends State<BlockedAppsListScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(localizations.cancel),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
-              await getIt<BlockedAppsCubit>().removeBlockedApp(app.packageName);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${app.appName} has been unblocked'),
-                    backgroundColor: Colors.green,
-                    behavior: SnackBarBehavior.floating,
-                  ),
+              Navigator.pop(dialogContext);
+
+              // 1. Get current challenge type
+              final challengeType = await getIt<SettingsRepository>()
+                  .getUnlockChallengeType();
+
+              // 2. Show challenge if enabled
+              bool shouldProceed = true;
+              if (challengeType != AppConstants.challengeNone && mounted) {
+                shouldProceed =
+                    await showDialog<bool>(
+                      context: currentContext,
+                      barrierDismissible: false,
+                      builder: (context) =>
+                          UnlockChallengeDialog(challengeType: challengeType),
+                    ) ??
+                    false;
+              }
+
+              // 3. Delete if challenge passed
+              if (shouldProceed) {
+                await getIt<BlockedAppsCubit>().removeBlockedApp(
+                  app.packageName,
                 );
+                if (mounted) {
+                  ScaffoldMessenger.of(currentContext).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        localizations.translate('app_unblocked').replaceAll('{appName}', app.appName),
+                      ),
+                      backgroundColor: Colors.green,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Unblock'),
+            child: Text(localizations.unblock),
           ),
         ],
       ),
@@ -106,9 +143,10 @@ class _BlockedAppsListScreenState extends State<BlockedAppsListScreen> {
 
   void _showRemoveAllDialog(List<BlockedApp> apps) {
     final localizations = AppLocalizations.of(context);
+    final currentContext = context;
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+      context: currentContext,
+      builder: (dialogContext) => AlertDialog(
         title: Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.red[700], size: 28),
@@ -126,7 +164,7 @@ class _BlockedAppsListScreenState extends State<BlockedAppsListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Are you sure you want to unblock ALL ${apps.length} apps?',
+              localizations.translate('unblock_all_confirm').replaceAll('{count}', apps.length.toString()),
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
@@ -137,14 +175,14 @@ class _BlockedAppsListScreenState extends State<BlockedAppsListScreen> {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.red[200]!),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.warning, color: Colors.red, size: 20),
-                  SizedBox(width: 8),
+                  const Icon(Icons.warning, color: Colors.red, size: 20),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'This will remove all blocked apps and their schedules. This action cannot be undone.',
-                      style: TextStyle(fontSize: 13, color: Colors.black87),
+                      localizations.unblockAllInfo,
+                      style: const TextStyle(fontSize: 13, color: Colors.black87),
                     ),
                   ),
                 ],
@@ -154,31 +192,55 @@ class _BlockedAppsListScreenState extends State<BlockedAppsListScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(localizations.cancel),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
-              // Remove all apps
-              for (var app in apps) {
-                await getIt<BlockedAppsCubit>().removeBlockedApp(app.packageName);
+              Navigator.pop(dialogContext);
+
+              // 1. Get current challenge type
+              final challengeType = await getIt<SettingsRepository>()
+                  .getUnlockChallengeType();
+
+              // 2. Show challenge if enabled
+              bool shouldProceed = true;
+              if (challengeType != AppConstants.challengeNone && mounted) {
+                shouldProceed =
+                    await showDialog<bool>(
+                      context: currentContext,
+                      barrierDismissible: false,
+                      builder: (context) =>
+                          UnlockChallengeDialog(challengeType: challengeType),
+                    ) ??
+                    false;
               }
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('All ${apps.length} apps have been unblocked'),
-                    backgroundColor: Colors.green,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+
+              // 3. Delete all if challenge passed
+              if (shouldProceed) {
+                for (var app in apps) {
+                  await getIt<BlockedAppsCubit>().removeBlockedApp(
+                    app.packageName,
+                  );
+                }
+                if (mounted) {
+                  ScaffoldMessenger.of(currentContext).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        localizations.translate('all_apps_unblocked').replaceAll('{count}', apps.length.toString()),
+                      ),
+                      backgroundColor: Colors.green,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Unblock All'),
+            child: Text(localizations.unblockAll),
           ),
         ],
       ),
@@ -202,7 +264,7 @@ class _BlockedAppsListScreenState extends State<BlockedAppsListScreen> {
               if (state is BlockedAppsLoaded && state.blockedApps.isNotEmpty) {
                 return IconButton(
                   icon: const Icon(Icons.delete_sweep),
-                  tooltip: 'Unblock All',
+                  tooltip: localizations.unblockAll,
                   onPressed: () => _showRemoveAllDialog(state.blockedApps),
                 );
               }
@@ -219,9 +281,7 @@ class _BlockedAppsListScreenState extends State<BlockedAppsListScreen> {
             decoration: BoxDecoration(
               color: theme.primaryColor.withOpacity(0.05),
               border: Border(
-                bottom: BorderSide(
-                  color: theme.dividerColor.withOpacity(0.1),
-                ),
+                bottom: BorderSide(color: theme.dividerColor.withOpacity(0.1)),
               ),
             ),
             child: TextField(
@@ -239,7 +299,10 @@ class _BlockedAppsListScreenState extends State<BlockedAppsListScreen> {
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
               ),
             ),
           ),
@@ -250,108 +313,32 @@ class _BlockedAppsListScreenState extends State<BlockedAppsListScreen> {
               bloc: getIt<BlockedAppsCubit>(),
               builder: (context, blockedAppsState) {
                 if (blockedAppsState is BlockedAppsLoading) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const CircularProgressIndicator(),
-                        const SizedBox(height: 16),
-                        Text(
-                          localizations.loading,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
+                  return Center(child: LoadingMessage());
                 }
 
                 if (blockedAppsState is BlockedAppsError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-                        const SizedBox(height: 16),
-                        Text(
-                          localizations.error,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          blockedAppsState.message,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
+                  return Center(child: ErrorMessage(message: blockedAppsState.message));
                 }
 
                 if (blockedAppsState is BlockedAppsLoaded) {
                   final blockedApps = blockedAppsState.blockedApps
-                      .where((app) =>
-                          _searchQuery.isEmpty ||
-                          app.appName.toLowerCase().contains(_searchQuery) ||
-                          app.packageName.toLowerCase().contains(_searchQuery))
+                      .where(
+                        (app) =>
+                            _searchQuery.isEmpty ||
+                            app.appName.toLowerCase().contains(_searchQuery) ||
+                            app.packageName.toLowerCase().contains(
+                              _searchQuery,
+                            ),
+                      )
                       .toList();
 
                   if (blockedApps.isEmpty) {
                     return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _searchQuery.isEmpty ? Icons.check_circle_outline : Icons.search_off,
-                            size: 80,
-                            color: theme.primaryColor.withOpacity(0.3),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _searchQuery.isEmpty
-                                ? 'No Blocked Apps'
-                                : 'No apps found',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: theme.textTheme.bodyLarge?.color,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _searchQuery.isEmpty
-                                ? 'You haven\'t blocked any apps yet.\nTap the button below to add some.'
-                                : 'Try searching with a different keyword',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
-                            ),
-                          ),
-                          if (_searchQuery.isEmpty) ...[
-                            const SizedBox(height: 24),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.pushNamed(context, '/app-selection');
-                              },
-                              icon: const Icon(Icons.add),
-                              label: const Text('Block Apps'),
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 32,
-                                  vertical: 16,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
+                      child: EmptyBlockedAppsMessage(
+                        isSearch: _searchQuery.isNotEmpty,
+                        onAddApps: _searchQuery.isEmpty
+                            ? () => Navigator.pushNamed(context, '/app-selection')
+                            : null,
                       ),
                     );
                   }
@@ -375,8 +362,12 @@ class _BlockedAppsListScreenState extends State<BlockedAppsListScreen> {
                               appName: blockedApp.appName,
                             ),
                           );
-
-                          return _buildAppCard(blockedApp, appInfo, theme);
+                          return BlockedAppCard(
+                            blockedApp: blockedApp,
+                            appInfo: appInfo,
+                            theme: theme,
+                            onRemove: () => _showRemoveDialog(blockedApp),
+                          );
                         },
                       );
                     },
@@ -392,128 +383,5 @@ class _BlockedAppsListScreenState extends State<BlockedAppsListScreen> {
     );
   }
 
-  Widget _buildAppCard(BlockedApp blockedApp, AppInfo appInfo, ThemeData theme) {
-    final hasSchedules = blockedApp.scheduleIds.isNotEmpty;
-    final scheduleText = hasSchedules
-        ? '${blockedApp.scheduleIds.length} schedule(s)'
-        : 'Always blocked (24/7)';
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          // Could navigate to app details or edit screen
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // App Icon
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: theme.primaryColor.withOpacity(0.1),
-                ),
-                child: appInfo.icon != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.memory(
-                          appInfo.icon!,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    : Icon(
-                        Icons.apps,
-                        size: 32,
-                        color: theme.primaryColor,
-                      ),
-              ),
-              const SizedBox(width: 16),
-
-              // App Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      blockedApp.appName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          hasSchedules ? Icons.schedule : Icons.block,
-                          size: 14,
-                          color: hasSchedules ? Colors.blue : Colors.red,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            scheduleText,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: hasSchedules ? Colors.blue : Colors.red,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (blockedApp.blockAttempts > 0) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.front_hand,
-                            size: 14,
-                            color: Colors.orange[700],
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${blockedApp.blockAttempts} block attempts',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.orange[700],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              // Remove Button
-              IconButton(
-                onPressed: () => _showRemoveDialog(blockedApp),
-                icon: const Icon(Icons.delete_outline),
-                color: Colors.red[400],
-                tooltip: 'Unblock',
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.red[50],
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // ...existing code...
 }

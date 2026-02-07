@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../../core/DI/setup_get_it.dart';
 import '../../../../data/models/custom_focus_mode.dart';
 import '../../../view_model/custom_focus_mode_cubit/custom_focus_mode_cubit.dart';
@@ -17,7 +16,6 @@ class SavedCustomModeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Card(
       elevation: 1,

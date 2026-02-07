@@ -2,6 +2,7 @@ import 'dart:convert';
 import '../local/shared_prefs_service.dart';
 import '../models/user_progress.dart';
 import '../models/achievement.dart';
+import '../../../core/utils/app_logger.dart';
 
 class GamificationRepository {
   final SharedPrefsService _prefsService;
@@ -19,7 +20,7 @@ class GamificationRepository {
         final progressData = jsonDecode(progressJson) as Map<String, dynamic>;
         return UserProgress.fromJson(progressData);
       } catch (e) {
-        print('Error parsing user progress: $e');
+        AppLogger.w('Error parsing user progress: $e');
       }
     }
 

@@ -1,6 +1,7 @@
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import '../models/schedule.dart';
+import '../models/block_screen_theme.dart';
 import '../local/shared_prefs_service.dart';
 import '../../../core/services/platform_channel_service.dart';
 
@@ -91,6 +92,44 @@ class SettingsRepository {
 
   Future<bool> setBlockScreenStyle(String style) async {
     return await _prefsService.setBlockScreenStyle(style);
+  }
+
+  Future<String> getBlockScreenColor() async {
+    return await _prefsService.getBlockScreenColor();
+  }
+
+  Future<bool> setBlockScreenColor(String color) async {
+    final result = await _prefsService.setBlockScreenColor(color);
+    if (result) {
+      await _syncCustomizationToNative();
+    }
+    return result;
+  }
+
+  Future<String> getBlockScreenQuote() async {
+    return await _prefsService.getBlockScreenQuote();
+  }
+
+  Future<bool> setBlockScreenQuote(String quote) async {
+    final result = await _prefsService.setBlockScreenQuote(quote);
+    if (result) {
+      await _syncCustomizationToNative();
+    }
+    return result;
+  }
+
+  Future<void> _syncCustomizationToNative() async {
+    final color = await _prefsService.getBlockScreenColor();
+    final quote = await _prefsService.getBlockScreenQuote();
+    await _platformService.syncBlockScreenCustomization(color, quote);
+  }
+
+  Future<List<BlockScreenTheme>> getBlockScreenThemes() async {
+    return await _prefsService.getBlockScreenThemes();
+  }
+
+  Future<bool> saveBlockScreenThemes(List<BlockScreenTheme> themes) async {
+    return await _prefsService.saveBlockScreenThemes(themes);
   }
 
   // ========== PIN Protection ==========

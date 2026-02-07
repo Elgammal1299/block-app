@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
 
 class AppLocalizations {
+        String get noAppsFound => translate('no_apps_found');
+        String get noBlockedApps => translate('no_blocked_apps');
+        String get noBlockedAppsHint => translate('no_blocked_apps_hint');
+        String get blockApps => translate('block_apps');
+      String get searchNoResultHint => translate('search_no_result_hint');
+    // Blocked Apps List Screen
+    String get unblockAppInfo => translate('unblock_app_info');
+    String get unblock => translate('unblock');
+    String get unblockAllInfo => translate('unblock_all_info');
+    String get unblockAll => translate('unblock_all');
   final Locale locale;
 
   AppLocalizations(this.locale);
@@ -67,7 +77,7 @@ class AppLocalizations {
   String get showSystemApps => translate('show_system_apps');
   String get selectedApps => translate('selected_apps');
   String get continueButton => translate('continue_button');
-  String get noAppsFound => translate('no_apps_found');
+  // String get noAppsFound => translate('no_apps_found');
   String get loadingApps => translate('loading_apps');
 
   // Schedule Screen
@@ -254,6 +264,23 @@ class AppLocalizations {
 
 // English translations
 const Map<String, String> _enStrings = {
+    // Blocked Apps List Screen
+    'unblock_app_confirm': 'Are you sure you want to unblock "{appName}"?',
+    'unblock_app_info': 'This app will no longer be blocked and can be used freely.',
+    'unblock': 'Unblock',
+    'unblock_all': 'Unblock All',
+    'unblock_all_confirm': 'Are you sure you want to unblock ALL {count} apps?',
+    'unblock_all_info': 'This will remove all blocked apps and their schedules. This action cannot be undone.',
+    'app_unblocked': '{appName} has been unblocked',
+    'all_apps_unblocked': 'All {count} apps have been unblocked',
+    'no_blocked_apps': 'No Blocked Apps',
+    'no_apps_found': 'No apps found',
+    'no_blocked_apps_hint': "You haven't blocked any apps yet.\nTap the button below to add some.",
+    'search_no_result_hint': 'Try searching with a different keyword',
+    'block_apps': 'Block Apps',
+    'block_attempts_count': '{count} block attempts',
+    'always_blocked_247': 'Always blocked (24/7)',
+    'schedules_count': '{count} schedule(s)',
   // Common
   'app_name': 'App Blocker',
   'ok': 'OK',
@@ -291,7 +318,7 @@ const Map<String, String> _enStrings = {
   'show_system_apps': 'Show System Apps',
   'selected_apps': 'Selected',
   'continue_button': 'Continue',
-  'no_apps_found': 'No apps found',
+  // 'no_apps_found': 'No apps found',
   'loading_apps': 'Loading apps...',
 
   // Schedule Screen
@@ -478,6 +505,23 @@ const Map<String, String> _enStrings = {
 
 // Arabic translations
 const Map<String, String> _arStrings = {
+    // Blocked Apps List Screen
+    'unblock_app_confirm': 'هل أنت متأكد أنك تريد إلغاء حظر "{appName}"؟',
+    'unblock_app_info': 'لن يكون هذا التطبيق محظوراً بعد الآن ويمكن استخدامه بحرية.',
+    'unblock': 'إلغاء الحظر',
+    'unblock_all': 'إلغاء حظر الكل',
+    'unblock_all_confirm': 'هل أنت متأكد أنك تريد إلغاء حظر جميع التطبيقات ({count})؟',
+    'unblock_all_info': 'سيتم إزالة جميع التطبيقات المحظورة وجداولها. لا يمكن التراجع عن هذا الإجراء.',
+    'app_unblocked': 'تم إلغاء حظر {appName}',
+    'all_apps_unblocked': 'تم إلغاء حظر جميع التطبيقات ({count})',
+    'no_blocked_apps': 'لا توجد تطبيقات محظورة',
+    'no_apps_found': 'لم يتم العثور على تطبيقات',
+    'no_blocked_apps_hint': 'لم تقم بحظر أي تطبيقات بعد.\nاضغط على الزر بالأسفل لإضافة بعض التطبيقات.',
+    'search_no_result_hint': 'جرّب البحث بكلمة أخرى',
+    'block_apps': 'حظر تطبيقات',
+    'block_attempts_count': '{count} محاولة حظر',
+    'always_blocked_247': 'محظور دائماً (24/7)',
+    'schedules_count': '{count} جدول',
   // Common
   'app_name': 'حاجب التطبيقات',
   'ok': 'موافق',
@@ -515,7 +559,7 @@ const Map<String, String> _arStrings = {
   'show_system_apps': 'إظهار تطبيقات النظام',
   'selected_apps': 'المحددة',
   'continue_button': 'متابعة',
-  'no_apps_found': 'لم يتم العثور على تطبيقات',
+  // 'no_apps_found': 'لم يتم العثور على تطبيقات',
   'loading_apps': 'جاري تحميل التطبيقات...',
 
   // Schedule Screen

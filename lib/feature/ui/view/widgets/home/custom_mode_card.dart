@@ -1,9 +1,8 @@
-import 'package:block_app/feature/ui/view_model/custom_focus_mode_cubit/custom_focus_mode_cubit.dart';
-import 'package:block_app/feature/ui/view_model/custom_focus_mode_cubit/custom_focus_mode_state.dart';
+import 'package:app_block/feature/ui/view_model/custom_focus_mode_cubit/custom_focus_mode_cubit.dart';
+import 'package:app_block/feature/ui/view_model/custom_focus_mode_cubit/custom_focus_mode_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../../../core/DI/setup_get_it.dart';
-import '../../../../../../core/router/app_routes.dart';
 // import '../../../../view_model/custom_focus_mode_cubit/custom_focus_mode_cubit.dart';
 // import '../../../../view_model/custom_focus_mode_cubit/custom_focus_mode_state.dart';
 

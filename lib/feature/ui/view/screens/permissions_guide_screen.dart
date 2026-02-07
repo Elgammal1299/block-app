@@ -39,9 +39,7 @@ class _PermissionsGuideScreenState extends State<PermissionsGuideScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Permissions Setup'),
-      ),
+      appBar: AppBar(title: const Text('Permissions Setup')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

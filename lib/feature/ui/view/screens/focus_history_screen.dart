@@ -70,9 +70,7 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
                 }
 
                 if (snapshot.hasError) {
-                  return Center(
-                    child: Text('Error: ${snapshot.error}'),
-                  );
+                  return Center(child: Text('Error: ${snapshot.error}'));
                 }
 
                 final history = snapshot.data ?? [];
@@ -82,11 +80,7 @@ class _FocusHistoryScreenState extends State<FocusHistoryScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.history,
-                          size: 80,
-                          color: Colors.grey[400],
-                        ),
+                        Icon(Icons.history, size: 80, color: Colors.grey[400]),
                         const SizedBox(height: 16),
                         Text(
                           'No sessions yet',
@@ -221,10 +215,7 @@ class _StreakCard extends StatelessWidget {
             children: [
               const Text(
                 'Focus Streak',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 14),
               ),
               const SizedBox(height: 4),
               Text(
@@ -263,9 +254,7 @@ class _SessionCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
-            session.wasCompleted
-                ? Icons.check_circle
-                : Icons.cancel,
+            session.wasCompleted ? Icons.check_circle : Icons.cancel,
             color: session.wasCompleted ? Colors.green : Colors.orange,
           ),
         ),

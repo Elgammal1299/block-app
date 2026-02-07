@@ -8,6 +8,7 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
+import android.util.Log
 import com.example.block_app.R
 import com.example.block_app.utils.AppInfoUtil
 import org.json.JSONArray
@@ -28,6 +29,7 @@ class BlockOverlayActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.d("BlockOverlay", "🎬 onCreate() called")
 
         // Configuration to show over lockscreen and keep screen on
         window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
@@ -37,23 +39,33 @@ class BlockOverlayActivity : Activity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD)
 
         setContentView(R.layout.activity_block_overlay)
+        Log.d("BlockOverlay", "✅ Layout set")
 
         appInfoUtil = AppInfoUtil(this)
         blockedPackage = intent.getStringExtra("blocked_package") ?: ""
         blockReason = intent.getStringExtra("block_reason")
+        
+        Log.e("BlockOverlay", "🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥")
+        Log.e("BlockOverlay", "🟥 OVERLAY SHOWN FOR: $blockedPackage")
+        Log.e("BlockOverlay", "🟥 Reason: $blockReason")
+        Log.e("BlockOverlay", "🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥")
 
         setupUI()
     }
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
+        Log.d("BlockOverlay", "🔄 onNewIntent() called")
         setIntent(intent)
         blockedPackage = intent?.getStringExtra("blocked_package") ?: ""
         blockReason = intent?.getStringExtra("block_reason")
+        Log.d("BlockOverlay", "📋 New blocked app: $blockedPackage, Reason: $blockReason")
         setupUI()
     }
 
     private fun setupUI() {
+        Log.d("BlockOverlay", "🎨 Setting up UI...")
+        val rootLayout = findViewById<android.widget.RelativeLayout>(R.id.block_root_layout)
         val titleText = findViewById<TextView>(R.id.tv_blocked_title)
         val messageText = findViewById<TextView>(R.id.tv_blocked_message)
         val statsText = findViewById<TextView>(R.id.tv_stats)
@@ -61,6 +73,41 @@ class BlockOverlayActivity : Activity() {
         val appIconView = findViewById<ImageView>(R.id.iv_blocked_app_icon)
         val homeButton = findViewById<Button>(R.id.btn_go_home)
         val closeX = findViewById<TextView>(R.id.btn_close_x)
+
+        // Set close button color to primary app color
+        try {
+            val primaryColorStr = getString(R.string.color_primary)
+            val primaryColorInt = android.graphics.Color.parseColor(primaryColorStr)
+            homeButton.backgroundTintList = android.content.res.ColorStateList.valueOf(primaryColorInt)
+        } catch (e: Exception) {
+            Log.e("BlockOverlay", "Failed to apply primary color", e)
+        }
+
+        // 0. Load Customization
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val customColor = prefs.getString("block_screen_color", "#050A1A") ?: "#050A1A"
+        val customQuote = prefs.getString("block_screen_quote", "") ?: ""
+
+        try {
+            val colorInt = android.graphics.Color.parseColor(customColor)
+            rootLayout.setBackgroundColor(colorInt)
+            
+            // Adjust text colors based on background brightness
+            val isLight = isColorLight(colorInt)
+            val textColor = if (isLight) android.graphics.Color.BLACK else android.graphics.Color.WHITE
+            val subTextColor = if (isLight) android.graphics.Color.argb(200, 0, 0, 0) else android.graphics.Color.argb(200, 255, 255, 255)
+
+            titleText.setTextColor(textColor)
+            messageText.setTextColor(textColor)
+            statsText.setTextColor(subTextColor)
+            motivationalText.setTextColor(subTextColor)
+            closeX.setTextColor(textColor)
+
+            homeButton.setTextColor(android.graphics.Color.WHITE)
+            
+        } catch (e: Exception) {
+            Log.e("BlockOverlay", "Failed to parse color: $customColor", e)
+        }
 
         // 1. Get and set the icon of the app being blocked
         val appIcon = appInfoUtil.getAppIcon(blockedPackage)
@@ -73,21 +120,42 @@ class BlockOverlayActivity : Activity() {
         // 2. Get app name for the message
         val appName = appInfoUtil.getAppName(blockedPackage)
 
-        // 3. Set Arabic Texts
-        titleText.text = "تم حظره بواسطة AppBlock"
-        messageText.text = "تم حظر $appName بواسطة الحظر السريع"
+        // 3. Set Localized Texts
+        titleText.text = getString(R.string.blocked_app_title)
+        messageText.text = getString(R.string.blocked_app_message, appName)
 
         // 4. Update stats (Today vs Total)
         val todayCount = getTodayBlockCount(blockedPackage)
         val totalCount = getTotalBlockCount(blockedPackage)
-        statsText.text = "${todayCount}× اليوم | ${totalCount}× الإجمالي"
+        
+        val todayStr = getString(R.string.stats_today, todayCount)
+        val totalStr = getString(R.string.stats_total, totalCount)
+        statsText.text = "$todayStr | $totalStr"
 
-        // 5. Random Wisdom
-        motivationalText.text = getRandomWisdom()
+        // 5. Custom or Random Wisdom
+        if (customQuote.isNotEmpty()) {
+            motivationalText.text = customQuote
+        } else {
+            motivationalText.text = getRandomWisdom()
+        }
 
         // 6. Navigation
         homeButton.setOnClickListener { goHome() }
         closeX.setOnClickListener { goHome() }
+    }
+
+    private fun adjustColorBrightness(color: Int, factor: Float): Int {
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(color, hsv)
+        hsv[2] *= factor
+        return android.graphics.Color.HSVToColor(hsv)
+    }
+
+    private fun isColorLight(color: Int): Boolean {
+        val darkness = 1 - (0.299 * android.graphics.Color.red(color) + 
+                          0.587 * android.graphics.Color.green(color) + 
+                          0.114 * android.graphics.Color.blue(color)) / 255
+        return darkness < 0.5
     }
 
     private fun getTodayBlockCount(packageName: String): Int {
@@ -107,7 +175,11 @@ class BlockOverlayActivity : Activity() {
     private fun getTotalBlockCount(packageName: String): Int {
         return try {
             val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val blockedAppsJson = prefs.getString("blocked_apps", "[]") ?: "[]"
+            val blockedAppsJson = try {
+                prefs.getString("blocked_apps", "[]") ?: "[]"
+            } catch (e: ClassCastException) {
+                "[]"
+            }
             val array = JSONArray(blockedAppsJson)
             
             for (i in 0 until array.length()) {
@@ -121,27 +193,26 @@ class BlockOverlayActivity : Activity() {
     }
 
     private fun getRandomWisdom(): String {
-        val wisdoms = listOf(
-            "\"العزيمة هي ما تجعلك تبدأ، والانضباط هو ما يبقيك مستمراً.\"",
-            "\"الوقت هو العملة الوحيدة التي تملكها، فاحذر من إنفاقها فيما لا ينفع.\"",
-            "\"النجاح لا يأتي من ما تفعله من حين لآخر، بل من ما تفعله باستمرار.\"",
-            "\"ركز على أهدافك، فالأماكن المزدحمة لا تصنع القادة.\"",
-            "\"إن لم تخطط للنجاح، فأنت تخطط للفشل.\"",
-            "\"تذكّر دائماً لماذا بدأت، ولا تستسلم للتوافه.\"",
-            "\"قوة الإرادة هي الفرق بين الشخص الذي ينجز والذي يتمنى.\"",
-            "\"كل دقيقة تقضيها في تطبيق محظور هي دقيقة ضائعة من مستقبلك.\"",
-            "\"أنت من تتحكم في هاتفك، لا تجعل هاتفك يتحكم فيك.\"",
-            "\"كن النسخة الأفضل من نفسك اليوم.\""
-        )
-        return wisdoms[Random.nextInt(wisdoms.size)]
+        return try {
+            val wisdoms = resources.getStringArray(R.array.motivational_quotes)
+            if (wisdoms.isNotEmpty()) {
+                wisdoms[Random.nextInt(wisdoms.size)]
+            } else {
+                ""
+            }
+        } catch (e: Exception) {
+            ""
+        }
     }
 
     private fun goHome() {
+        Log.d("BlockOverlay", "🏠 Going home...")
         val homeIntent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_HOME)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         startActivity(homeIntent)
+        Log.d("BlockOverlay", "✅ Home intent started")
         finish()
     }
 

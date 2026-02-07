@@ -7,6 +7,7 @@ import android.content.Intent
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import com.example.block_app.ui.BlockOverlayActivity
+import com.example.block_app.utils.AdaptiveThrottleManager
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.*
@@ -37,6 +38,10 @@ class AppBlockerAccessibilityService : AccessibilityService() {
             prefs.edit().putLong(KEY_TEMP_UNLOCK, unlockUntil).apply()
             Log.d(TAG, "Temporary unlock set for $durationMinutes minutes")
         }
+
+        // ✨ Phase 4: Singleton pattern for MethodChannel access
+        var instance: AppBlockerAccessibilityService? = null
+            private set
     }
 
     // --- Data Classes for Performance (Pre-parsed Cache) ---
@@ -83,16 +88,33 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     private var usageMonitorJob: Job? = null
     private var prefs: SharedPreferences? = null
 
-    private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+    private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        Log.e(TAG, "🔔 SharedPreferences changed: $key")
+        Log.e(TAG, "🔄 Refreshing cache due to preference change...")
         refreshCache()
     }
 
     private var lastOverlayTime = 0L
     private var lastTargetPackage: String? = null
 
+    override fun onCreate() {
+        super.onCreate()
+        Log.d(TAG, "Service Created")
+        
+        // ✨ Phase 4 Fix: Early initialization
+        if (prefs == null) {
+            prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            Log.d(TAG, "SharedPreferences initialized in onCreate")
+        }
+    }
+
     override fun onServiceConnected() {
+        instance = this // Set instance for external access
         super.onServiceConnected()
-        Log.d(TAG, "Accessibility Service Connected - Performance Optimized")
+        // 🔥 CRITICAL LOG - لو ما شفت الرسالة دي → الخدمة مش شغالة!
+        Log.e(TAG, "🔥🔥🔥 *** ACCESSIBILITY SERVICE CONNECTED *** 🔥🔥🔥")
+        Log.e(TAG, "🔥 Service is RUNNING and ACTIVE - Ready to block apps!")
+        Log.d(TAG, "🟢 Accessibility Service Connected - Performance Optimized")
 
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs?.registerOnSharedPreferenceChangeListener(prefChangeListener)
@@ -105,6 +127,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         serviceInfo = info
 
         // Refresh cache initially
+        Log.d(TAG, "📚 Refreshing cache on service connection...")
         refreshCache()
 
         // Register receiver for screen events to handle session closing
@@ -115,9 +138,12 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
         // Start background usage monitor
         startUsageMonitor()
+        
+        Log.d(TAG, "✅ Service fully initialized and ready to block apps")
     }
     
     override fun onDestroy() {
+        instance = null // Clear instance
         super.onDestroy()
         prefs?.unregisterOnSharedPreferenceChangeListener(prefChangeListener)
         unregisterScreenReceiver()
@@ -129,13 +155,34 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         serviceScope.cancel()
     }
 
-    private fun refreshCache() {
+    fun refreshCache() { // Made public
         serviceScope.launch(Dispatchers.IO) {
             try {
-                val p = prefs ?: return@launch
+                val p = prefs
+                if (p == null) {
+                    Log.e(TAG, "❌ CRITICAL: prefs is NULL! Cannot load blocked apps!")
+                    return@launch
+                }
+                
+                Log.d(TAG, "🔄 Starting cache refresh...")
                 
                 // 1. Blocked Apps
-                val blockedAppsJson = p.getString(KEY_BLOCKED_APPS, "[]") ?: "[]"
+                val blockedAppsJson = try {
+                    p.getString(KEY_BLOCKED_APPS, "[]") ?: "[]"
+                } catch (e: ClassCastException) {
+                    // Handle migration from old format (StringSet)
+                    "[]"
+                }
+                
+                Log.e(TAG, "📥 Raw JSON from SharedPrefs (Length: ${blockedAppsJson.length}): ${blockedAppsJson.take(500)}")
+                
+                if (blockedAppsJson == "[]") {
+                    Log.w(TAG, "⚠️ Blocked apps JSON is EMPTY! Checking if KEY_BLOCKED_APPS exists...")
+                    if (!p.contains(KEY_BLOCKED_APPS)) {
+                        Log.e(TAG, "❌ KEY_BLOCKED_APPS ($KEY_BLOCKED_APPS) does NOT exist in prefs!")
+                    }
+                }
+                
                 val blockedAppsArray = JSONArray(blockedAppsJson)
                 val newBlockedApps = mutableMapOf<String, BlockConfig>()
                 for (i in 0 until blockedAppsArray.length()) {
@@ -148,10 +195,14 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                     }
                     newBlockedApps[pkg] = BlockConfig(
                         packageName = pkg,
-                        isBlocked = app.optBoolean("isBlocked", false),
+                        isBlocked = app.optBoolean("isBlocked", true), // ✨ Phase 4 Fix: Default to true
                         blockAttempts = app.optInt("blockAttempts", 0),
                         scheduleIds = sIds
                     )
+                }
+                Log.d(TAG, "✅ Loaded ${newBlockedApps.size} blocked apps from cache")
+                for ((pkg, config) in newBlockedApps) {
+                    Log.d(TAG, "  - $pkg (blocked: ${config.isBlocked}, schedules: ${config.scheduleIds})")
                 }
 
                 // 2. Schedules
@@ -207,7 +258,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                     }
                     newDynamicBlocks[pkg] = BlockConfig(
                         packageName = pkg,
-                        isBlocked = app.optBoolean("isBlocked", false),
+                        isBlocked = app.optBoolean("isBlocked", true), // ✨ Phase 4 Fix: Default to true
                         blockAttempts = app.optInt("blockAttempts", 0),
                         scheduleIds = sIds
                     )
@@ -220,13 +271,36 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                     cachedUsageLimits = newUsageLimits
                     cachedDynamicBlocks = newDynamicBlocks
                     
-                    // Merge dynamic blocks into cachedBlockedApps
-                    for ((pkg, config) in newDynamicBlocks) {
-                        cachedBlockedApps[pkg] = config
+                    // ✨ IMPORTANT: Merge persistent dynamic blocks into cachedBlockedApps
+                    // This ensures that apps blocked by usage limits are actually blocked
+                    for (pkg in newDynamicBlocks.keys) {
+                        val dynamicApp = newDynamicBlocks[pkg] ?: continue
+                        if (dynamicApp.isBlocked) {
+                            // If it's already in official, merge schedule IDs if needed, 
+                            // otherwise override with dynamic block status
+                            val officialApp = newBlockedApps[pkg]
+                            if (officialApp != null) {
+                                newBlockedApps[pkg] = officialApp.copy(
+                                    isBlocked = true,
+                                    blockAttempts = maxOf(officialApp.blockAttempts, dynamicApp.blockAttempts)
+                                )
+                            } else {
+                                newBlockedApps[pkg] = dynamicApp
+                            }
+                        }
                     }
                 }
                 
                 lastCacheRefreshTime = System.currentTimeMillis()
+                Log.e(TAG, "🚨 *** CACHE REFRESHED *** 🚨")
+                Log.e(TAG, "✅ Total blocked apps loaded: ${newBlockedApps.size}")
+                for ((pkg, config) in newBlockedApps) {
+                    Log.e(TAG, "   ✓ $pkg (blocked: ${config.isBlocked}, schedules: ${config.scheduleIds})")
+                }
+                synchronized(this@AppBlockerAccessibilityService) {
+                    Log.e(TAG, "📋 Final Cache State: cachedBlockedApps.size = ${cachedBlockedApps.size}")
+                }
+                Log.e(TAG, "   Ready to use for blocking decisions")
                 Log.d(TAG, "Cache refreshed and pre-parsed into objects")
                 
                 refreshUsageAndFocusCache()
@@ -562,7 +636,12 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     }
 
     private var lastEventTime = 0L
-    private val EVENT_DEBOUNCE_MS = 500L
+    // ⏱ Phase 3 Optimization: Adaptive Throttling based on performance
+    // Uses AdaptiveThrottleManager to dynamically adjust:
+    // - Excellent FPS (55+): 500ms → responsive
+    // - Good FPS (45-55): 800ms → balanced
+    // - Poor FPS (<45): 1200ms → conservative
+    // - Memory pressure: 1200ms → protect from OOM
     private var lastCheckedPackage: String? = null
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -572,16 +651,36 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         }
 
         val currentTime = System.currentTimeMillis()
-        // 🥉 3. Debounce: Ignore events happening too fast (Noise reduction)
-        if (currentTime - lastEventTime < EVENT_DEBOUNCE_MS) {
+        val packageName = event.packageName?.toString() ?: ""
+        
+        // 💓 HEARTBEAT: Update every ~5s to tell the app we are alive and processing events
+        if (currentTime % 5000 < 500) {
+            prefs?.edit()?.putLong("service_last_seen", currentTime)?.apply()
+        }
+        
+        // 🔵 CRITICAL LOG: Use ERROR level so it shows up even in filtered logs
+        Log.e(TAG, "🔵 EVENT: $packageName [${event.eventType}]")
+        
+        // 🥉 3. Adaptive Debounce: Use performance-based throttle
+        val adaptiveDebounceMs = AdaptiveThrottleManager.getAdaptiveThrottleDuration()
+        
+        // If it's a DIFFERENT package, bypass throttle to be responsive to app switches
+        val isDifferentPackage = packageName != lastCheckedPackage
+        
+        // 🚨 CRITICAL: Update lastCheckedPackage IMMEDIATELY to detect toggle
+        lastCheckedPackage = packageName
+        
+        if (!isDifferentPackage && (currentTime - lastEventTime < adaptiveDebounceMs)) {
+            Log.v(TAG, "⏱ Debounce throttled: $packageName (waited: ${currentTime - lastEventTime}ms)")
             return
         }
+        
+        // Update tracking
         lastEventTime = currentTime
-
-        val packageName = event.packageName?.toString() ?: return
 
         // Don't block our own app OR let it be counted as usage
         if (packageName == this.packageName) {
+            Log.d(TAG, "📱 Our own app detected: $packageName - ending session")
             // If we are showing the blocker, end the session for the previously open app
             endCurrentSession()
             return
@@ -589,24 +688,24 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         
         // 🟢 4. Filter System Interruptions (Input Methods, Launchers, Permission Dialogs)
         if (isInterruption(packageName) || isStopper(packageName)) {
+            Log.v(TAG, "🚫 System interruption/stopper detected: $packageName")
              // Handle stopper logic (End session if home or our app)
              if (isStopper(packageName)) {
+                 Log.d(TAG, "🏠 Home/Launcher detected: $packageName - ending session")
                  endCurrentSession()
-                 // Reset target so that re-opening the app blocks immediately 
-                 // without waiting for the 3s throttle guard.
-                 lastTargetPackage = null 
              }
              return
         }
 
         // Check if there's a temporary unlock
         if (isTemporarilyUnlocked()) {
+            Log.v(TAG, "🔓 App is temporarily unlocked: $packageName")
             return
         }
         
-        // 🥈 2. State Guard: If same package as last check (and active), minimal logic
-        val isSamePackage = (packageName == lastCheckedPackage)
-        lastCheckedPackage = packageName
+        // 🥈 2. State Guard
+        val isSamePackage = !isDifferentPackage
+        Log.d(TAG, "✅ Processing package: $packageName (same as last: $isSamePackage)")
 
         // ✨ NEW: Track App Usage (Source of Truth)
         handleAppChange(packageName)
@@ -616,16 +715,25 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         // But for now, let's rely on the Debounce to throttle this.
         
         // Check for block reasons in priority order
+        val isInFocus = isInActiveFocusSession(packageName)
+        val hasLimitReached = hasReachedUsageLimit(packageName)
+        val shouldBlock = shouldBlockApp(packageName)
+        
+        Log.d(TAG, "🔍 Block checks for $packageName - Focus:$isInFocus, Limit:$hasLimitReached, Schedule:$shouldBlock")
+        
         val reason = when {
-            isInActiveFocusSession(packageName) -> "focus_mode"
-            hasReachedUsageLimit(packageName) -> "usage_limit_reached"
-            shouldBlockApp(packageName) -> "schedule"
+            isInFocus -> "focus_mode"
+            hasLimitReached -> "usage_limit_reached"
+            shouldBlock -> "schedule"
             else -> null
         }
 
         if (reason != null && !isTemporarilyUnlocked()) {
+            Log.w(TAG, "🚫 BLOCKING TRIGGERED: $packageName - Reason: $reason")
             handleBlockAction(packageName, reason, source = "AccessibilityEvent")
             lastCheckedPackage = packageName // Update tracking
+        } else {
+            Log.d(TAG, "✅ ALLOWED: $packageName - No blocking reason")
         }
     }
 
@@ -635,28 +743,26 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     private fun handleBlockAction(packageName: String, reason: String, source: String) {
         val currentTime = System.currentTimeMillis()
         
-        // 1. ✨ THROTTLE GUARD: If we just showed the block screen for this app recently, STOP.
-        if (packageName == lastTargetPackage && (currentTime - lastOverlayTime < 3000)) {
-            Log.v(TAG, "Blocking logic throttled for $packageName ($source)")
+        // 1. ✨ THROTTLE GUARD: Reduced to 1.5s to allow quick re-blocking if user tries to bypass
+        if (packageName == lastTargetPackage && (currentTime - lastOverlayTime < 1500)) {
+            Log.v(TAG, " Blocking logic throttled for $packageName ($source) - recently blocked at $lastOverlayTime")
             return
         }
+
+        Log.e(TAG, "🚀 TRIGGERING BLOCK OVERLAY for $packageName (Source: $source)")
+    Log.e(TAG, "🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥")
+    Log.e(TAG, "🚀 BLOCK TRIGGERED → $packageName")
+    Log.e(TAG, "🚀 Reason: $reason | Source: $source")
+    Log.e(TAG, "🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥")
 
         // 2. 🚀 IMMEDIATE STATE UPDATE
         lastTargetPackage = packageName
         lastOverlayTime = currentTime
-        lastCheckedPackage = packageName
 
-        // 3. 🧠 SYNCHRONOUS MEMORY CACHE UPDATE
-        synchronized(this) {
-            val config = cachedBlockedApps[packageName] ?: BlockConfig(
-                packageName = packageName,
-                isBlocked = true,
-                blockAttempts = 0,
-                scheduleIds = emptyList()
-            )
-            config.isBlocked = true
-            cachedBlockedApps[packageName] = config
-        }
+        // Note: We no longer modify cachedBlockedApps here to prevent apps
+        // from staying blocked after being removed from Flutter.
+        // Blocking still works via shouldBlockApp(), hasReachedUsageLimit(), 
+        // and isInActiveFocusSession() checks.
 
         Log.w(TAG, "🚫 Block Trigger [$source] for $packageName. Reason: $reason")
         
@@ -672,16 +778,41 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     }
 
     private fun shouldBlockApp(packageName: String): Boolean {
-        val appConfig = synchronized(this) { cachedBlockedApps[packageName] } ?: return false
+        // Check both official blocks and dynamic blocks (usage limit persistent blocks)
+        val appConfig = synchronized(this) { 
+            cachedBlockedApps[packageName] ?: cachedDynamicBlocks[packageName] 
+        }
+        
+        if (appConfig == null) {
+            Log.d(TAG, "🟢 App NOT tracked for blocking: $packageName")
+            return false
+        }
+
+        if (!appConfig.isBlocked) {
+            Log.d(TAG, "🟢 App found in cache but isBlocked is FALSE: $packageName")
+            return false
+        }
+
+        Log.w(TAG, "🔍 App IS in blocked list and ACTIVE: $packageName (Schedules: ${appConfig.scheduleIds.size})")
 
         try {
             // If no schedules assigned, block 24/7
             if (appConfig.scheduleIds.isEmpty()) {
+                Log.w(TAG, "🔒 BLOCKING: $packageName (blocked 24/7, no schedule)")
                 return true
             }
 
             // Check if current time is within any of the assigned schedules
-            return isWithinAnySchedule(appConfig.scheduleIds)
+            val isWithinSchedule = isWithinAnySchedule(appConfig.scheduleIds)
+            Log.d(TAG, "📅 Schedule check for $packageName: $isWithinSchedule (schedules: ${appConfig.scheduleIds})")
+            
+            if (isWithinSchedule) {
+                Log.w(TAG, "🔒 BLOCKING: $packageName (within schedule time)")
+            } else {
+                Log.d(TAG, "✅ ALLOWED: $packageName (outside schedule time)")
+            }
+            
+            return isWithinSchedule
         } catch (e: Exception) {
             Log.e(TAG, "Error checking schedules for $packageName: ${e.message}")
         }
@@ -826,30 +957,42 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                     }
                 }
 
-                if (!foundInOfficial) {
-                    updatedAttempts = 1
-                    val newApp = JSONObject().apply {
-                        put("packageName", packageName)
-                        put("isBlocked", true)
-                        put("blockAttempts", 1)
-                        put("scheduleIds", JSONArray())
-                    }
-                    blockedAppsArray.put(newApp)
-                }
-
                 // 2. Update Dynamic List (JSON)
                 val dynamicObj = JSONObject(dynamicJson)
-                val existingDynamic = dynamicObj.optJSONObject(packageName) ?: JSONObject().apply {
-                    put("packageName", packageName)
-                    put("scheduleIds", scheduleIds)
+                val existingDynamic = dynamicObj.optJSONObject(packageName)
+                
+                if (existingDynamic != null) {
+                    // It's a dynamic block - update it even if not in official list
+                    if (!foundInOfficial) {
+                        updatedAttempts = existingDynamic.optInt("blockAttempts", 0) + 1
+                        scheduleIds = existingDynamic.optJSONArray("scheduleIds") ?: JSONArray()
+                    }
+                    existingDynamic.put("blockAttempts", updatedAttempts)
+                    existingDynamic.put("isBlocked", true)
+                    dynamicObj.put(packageName, existingDynamic)
+                } else if (foundInOfficial) {
+                    // Not in dynamic yet, but in official - create dynamic entry
+                    val newDynamic = JSONObject().apply {
+                        put("packageName", packageName)
+                        put("scheduleIds", scheduleIds)
+                        put("blockAttempts", updatedAttempts)
+                        put("isBlocked", true)
+                    }
+                    dynamicObj.put(packageName, newDynamic)
                 }
-                existingDynamic.put("blockAttempts", updatedAttempts)
-                existingDynamic.put("isBlocked", true)
-                dynamicObj.put(packageName, existingDynamic)
+
+                // If not found in either, this app is officially unblocked. Stop.
+                if (!foundInOfficial && existingDynamic == null) {
+                    Log.d(TAG, "Not incrementing attempts for $packageName: App is not blocked.")
+                    trackDailyBlockAttempt(packageName) 
+                    return@launch
+                }
 
                 // 3. Save Both
                 p.edit().apply {
-                    putString(KEY_BLOCKED_APPS, blockedAppsArray.toString())
+                    if (foundInOfficial) {
+                        putString(KEY_BLOCKED_APPS, blockedAppsArray.toString())
+                    }
                     putString(KEY_DYNAMIC_BLOCKS, dynamicObj.toString())
                 }.commit()
 
@@ -903,6 +1046,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
     }
 
     private fun launchBlockOverlay(packageName: String, blockReason: String? = null) {
+        Log.w(TAG, "🎬 LAUNCHING BLOCK OVERLAY for: $packageName (Reason: $blockReason)")
         val intent = Intent(this, BlockOverlayActivity::class.java).apply {
             // Using REORDER_TO_FRONT and SINGLE_TOP to bring existing instance to front 
             // instead of recreating and causing flicker
@@ -914,6 +1058,11 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                 putExtra("block_reason", blockReason)
             }
         }
-        startActivity(intent)
+        try {
+            startActivity(intent)
+            Log.d(TAG, "✅ Block overlay activity started successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to start block overlay: ${e.message}", e)
+        }
     }
 }

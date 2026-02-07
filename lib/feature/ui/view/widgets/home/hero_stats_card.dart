@@ -14,9 +14,7 @@ class HeroStatsCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Container(
         height: 200,
         decoration: BoxDecoration(
@@ -36,11 +34,7 @@ class HeroStatsCard extends StatelessWidget {
             builder: (context, goalState) {
               return BlocBuilder<GamificationCubit, GamificationState>(
                 builder: (context, gamificationState) {
-                  return _buildContent(
-                    context,
-                    goalState,
-                    gamificationState,
-                  );
+                  return _buildContent(context, goalState, gamificationState);
                 },
               );
             },
@@ -63,8 +57,9 @@ class HeroStatsCard extends StatelessWidget {
     }
 
     final goal = goalState is DailyGoalLoaded ? goalState.goal : null;
-    final progress =
-        gamificationState is GamificationLoaded ? gamificationState : null;
+    final progress = gamificationState is GamificationLoaded
+        ? gamificationState
+        : null;
 
     final achievedMinutes = goal?.achievedMinutes ?? 0;
     final targetMinutes = goal?.targetMinutes ?? 60;
@@ -194,11 +189,7 @@ class HeroStatsCard extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 8),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.stars,
-                        color: Colors.amber,
-                        size: 20,
-                      ),
+                      const Icon(Icons.stars, color: Colors.amber, size: 20),
                       const SizedBox(width: 8),
                       Text(
                         'المستوى ${progress.level}',

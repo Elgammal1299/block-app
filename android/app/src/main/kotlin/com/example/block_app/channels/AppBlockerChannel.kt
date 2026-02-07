@@ -13,16 +13,24 @@ import com.example.block_app.utils.PermissionUtil
 import com.example.block_app.utils.UsageStatsUtil
 import com.example.block_app.utils.WorkManagerUtil
 import com.example.block_app.utils.UsageDataCleaner
+import com.example.block_app.utils.ServiceRunningUtil
 import com.example.block_app.services.AppMonitorService
 import com.example.block_app.services.UsageTrackingService
+import com.example.block_app.services.AppBlockerAccessibilityService
 import kotlinx.coroutines.*
 import android.os.Handler
 import android.os.Looper
+import java.util.concurrent.atomic.AtomicBoolean
 
 class AppBlockerChannel(
     private val activity: Activity,
     private val channel: MethodChannel
 ) : MethodChannel.MethodCallHandler {
+
+    companion object {
+        private val isInitialized = AtomicBoolean(false)
+        private val lock = Any()
+    }
 
     private val appInfoUtil = AppInfoUtil(activity)
     private val permissionUtil = PermissionUtil(activity)
@@ -33,7 +41,16 @@ class AppBlockerChannel(
     private val channelScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     fun setupMethodChannel() {
-        channel.setMethodCallHandler(this)
+        // Prevent duplicate initialization
+        // Only allow the first call to actually set the handler
+        synchronized(lock) {
+            if (!isInitialized.compareAndSet(false, true)) {
+                Log.w("AppBlockerChannel", "Channel already initialized, skipping duplicate setup")
+                return
+            }
+            channel.setMethodCallHandler(this)
+            Log.d("AppBlockerChannel", "Channel initialized successfully (first init)")
+        }
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -85,9 +102,27 @@ class AppBlockerChannel(
                 result.success(null)
             }
 
+            // Notification Listener Permission
+            "checkNotificationListenerPermission" -> {
+                val hasPermission = permissionUtil.hasNotificationListenerPermission()
+                result.success(hasPermission)
+            }
+
+            "requestNotificationListenerPermission" -> {
+                permissionUtil.requestNotificationListenerPermission()
+                result.success(null)
+            }
+
             // Monitoring Service
             "startMonitoringService" -> {
                 try {
+                    // Guard against double initialization
+                    if (ServiceRunningUtil.isServiceRunning(activity, AppMonitorService::class.java)) {
+                        Log.w("AppBlockerChannel", "AppMonitorService is already running, skipping start")
+                        result.success(null)
+                        return@onMethodCall
+                    }
+
                     val intent = Intent(activity, AppMonitorService::class.java)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         activity.startForegroundService(intent)
@@ -115,6 +150,13 @@ class AppBlockerChannel(
             // Usage Tracking Service
             "startUsageTrackingService" -> {
                 try {
+                    // Guard against double initialization
+                    if (ServiceRunningUtil.isServiceRunning(activity, UsageTrackingService::class.java)) {
+                        Log.w("AppBlockerChannel", "UsageTrackingService is already running, skipping start")
+                        result.success(null)
+                        return@onMethodCall
+                    }
+
                     // Save that services are enabled for auto-restart
                     val prefs = activity.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
                     prefs.edit().putBoolean("services_enabled", true).apply()
@@ -146,25 +188,12 @@ class AppBlockerChannel(
                     result.error("ERROR", "Failed to stop usage tracking service: ${e.message}", null)
                 }
             }
-
-            // Update blocked apps
-            "updateBlockedApps" -> {
-                try {
-                    val packageNames = call.argument<List<String>>("packageNames")
-                    if (packageNames != null) {
-                        // Save to SharedPreferences
-                        val sharedPrefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
-                        val editor = sharedPrefs.edit()
-                        editor.putStringSet("blocked_apps", packageNames.toSet())
-                        editor.apply()
-                        result.success(null)
-                    } else {
-                        result.error("ERROR", "Package names are null", null)
-                    }
-                } catch (e: Exception) {
-                    result.error("ERROR", "Failed to update blocked apps: ${e.message}", null)
-                }
+            "isServiceRunning" -> {
+                val isMonitoringRunning = ServiceRunningUtil.isServiceRunning(activity, AppMonitorService::class.java)
+                val isUsageTrackingRunning = ServiceRunningUtil.isServiceRunning(activity, UsageTrackingService::class.java)
+                result.success(isMonitoringRunning && isUsageTrackingRunning)
             }
+
 
             // Update blocked apps with full JSON data
             "updateBlockedAppsJson" -> {
@@ -172,14 +201,28 @@ class AppBlockerChannel(
                     try {
                         val appsJson = call.argument<String>("appsJson")
                         if (appsJson != null) {
+                            Log.d("AppBlockerChannel", "📥 Received updateBlockedAppsJson: ${appsJson.take(200)}...")
+                            Log.d("AppBlockerChannel", "   Total JSON size: ${appsJson.length} bytes")
+                            
                             val prefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
-                            prefs.edit().putString("blocked_apps", appsJson).apply()
-                            Log.d("AppBlockerChannel", "Blocked apps JSON updated (${appsJson.length} bytes)")
+                            // Use commit() for critical sync to ensure immediate availability across processes
+                            val success = prefs.edit()
+                                .putString("blocked_apps", appsJson)
+                                .putLong("service_last_seen", System.currentTimeMillis())
+                                .commit()
+                            
+                            Log.d("AppBlockerChannel", "✅ Blocked apps JSON saved to SharedPreferences (success: $success)")
+                            
+                            // ✨ Explicitly refresh Accessibility Service cache for zero-latency hotswap
+                            AppBlockerAccessibilityService.instance?.refreshCache()
+                            
                             withContext(Dispatchers.Main) { result.success(null) }
                         } else {
+                            Log.e("AppBlockerChannel", "❌ Apps JSON is null!")
                             withContext(Dispatchers.Main) { result.error("ERROR", "Apps JSON is null", null) }
                         }
                     } catch (e: Exception) {
+                        Log.e("AppBlockerChannel", "❌ Error updating blocked apps: ${e.message}", e)
                         withContext(Dispatchers.Main) { result.error("ERROR", "Failed to update blocked apps JSON: ${e.message}", null) }
                     }
                 }
@@ -195,6 +238,10 @@ class AppBlockerChannel(
                             val schedulesJson = org.json.JSONArray(schedules).toString()
                             prefs.edit().putString("schedules", schedulesJson).apply()
                             Log.d("AppBlockerChannel", "Schedules updated (${schedulesJson.length} bytes)")
+                            
+                            // ✨ Explicitly refresh Accessibility Service cache
+                            AppBlockerAccessibilityService.instance?.refreshCache()
+                            
                             withContext(Dispatchers.Main) { result.success(null) }
                         } else {
                             withContext(Dispatchers.Main) { result.error("ERROR", "Schedules are null", null) }
@@ -214,6 +261,10 @@ class AppBlockerChannel(
                             val prefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
                             prefs.edit().putString("usage_limits", limitsJson).apply()
                             Log.d("AppBlockerChannel", "Usage limits updated (${limitsJson.length} bytes)")
+                            
+                            // ✨ Explicitly refresh Accessibility Service cache
+                            AppBlockerAccessibilityService.instance?.refreshCache()
+                            
                             withContext(Dispatchers.Main) { result.success(null) }
                         } else {
                             withContext(Dispatchers.Main) { result.error("ERROR", "Limits JSON is null", null) }
@@ -563,7 +614,11 @@ class AppBlockerChannel(
             "getBlockedAppsJson" -> {
                 try {
                     val prefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
-                    val blockedAppsJson = prefs.getString("blocked_apps", null) ?: "[]"
+                    val blockedAppsJson = try {
+                        prefs.getString("blocked_apps", null) ?: "[]"
+                    } catch (e: ClassCastException) {
+                        "[]"
+                    }
                     Log.d("AppBlockerChannel", "Retrieved blocked apps JSON: $blockedAppsJson")
                     result.success(blockedAppsJson)
                 } catch (e: Exception) {
@@ -583,6 +638,94 @@ class AppBlockerChannel(
                     } catch (e: Exception) {
                          result.error("ERROR", "Failed to clear usage data: ${e.message}", null)
                     }
+                }
+            }
+
+            "syncBlockScreenCustomization" -> {
+                try {
+                    val color = call.argument<String>("color")
+                    val quote = call.argument<String>("quote")
+                    if (color != null && quote != null) {
+                        val prefs = activity.getSharedPreferences("app_blocker", Context.MODE_PRIVATE)
+                        prefs.edit()
+                            .putString("block_screen_color", color)
+                            .putString("block_screen_quote", quote)
+                            .apply()
+                        Log.d("AppBlockerChannel", "Syncing customization: color=$color, quote=$quote")
+                        result.success(null)
+                    } else {
+                        result.error("ERROR", "Color or quote is null", null)
+                    }
+                } catch (e: Exception) {
+                    result.error("ERROR", "Failed to sync customization: ${e.message}", null)
+                }
+            }
+
+            // Phase 3.5: Icon Cache Management
+            "preloadAppIcons" -> {
+                try {
+                    val packageNames = call.argument<List<String>>("packageNames") ?: emptyList()
+                    val iconCacheManager = com.example.block_app.utils.IconCacheManager.getInstance(activity)
+                    
+                    // Preload icons on background thread
+                    channelScope.launch(Dispatchers.IO) {
+                        iconCacheManager.preloadAppIcons(packageNames)
+                        result.success(null)
+                    }
+                } catch (e: Exception) {
+                    result.error("ERROR", "Failed to preload icons: ${e.message}", null)
+                }
+            }
+
+            "invalidateAppIcon" -> {
+                try {
+                    val packageName = call.argument<String>("packageName")
+                    if (packageName != null) {
+                        val iconCacheManager = com.example.block_app.utils.IconCacheManager.getInstance(activity)
+                        iconCacheManager.invalidateIcon(packageName)
+                        result.success(null)
+                    } else {
+                        result.error("ERROR", "Package name is null", null)
+                    }
+                } catch (e: Exception) {
+                    result.error("ERROR", "Failed to invalidate icon: ${e.message}", null)
+                }
+            }
+
+            "clearIconCache" -> {
+                try {
+                    val iconCacheManager = com.example.block_app.utils.IconCacheManager.getInstance(activity)
+                    iconCacheManager.clearCache()
+                    result.success(null)
+                } catch (e: Exception) {
+                    result.error("ERROR", "Failed to clear icon cache: ${e.message}", null)
+                }
+            }
+
+            "getIconCacheStats" -> {
+                try {
+                    val iconCacheManager = com.example.block_app.utils.IconCacheManager.getInstance(activity)
+                    val stats = iconCacheManager.getCacheStats()
+                    result.success(stats)
+                } catch (e: Exception) {
+                    result.error("ERROR", "Failed to get icon cache stats: ${e.message}", null)
+                }
+            }
+
+            // Phase 4: Explicit Cache Control
+            "forceRefreshCache" -> {
+                try {
+                    Log.e("AppBlockerChannel", "🔄 FORCING accessibility cache refresh...")
+                    AppBlockerAccessibilityService.instance?.let { service ->
+                        service.refreshCache()
+                        Log.e("AppBlockerChannel", "✅ Force refresh command sent to service")
+                        result.success(true)
+                    } ?: run {
+                        Log.e("AppBlockerChannel", "⚠️ Accessibility Service NOT RUNNING, cannot refresh")
+                        result.success(false)
+                    }
+                } catch (e: Exception) {
+                    result.error("ERROR", "Failed to force refresh: ${e.message}", null)
                 }
             }
 

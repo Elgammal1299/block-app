@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../ui/view/screens/home_screen.dart';
 import '../ui/view/screens/statistics_dashboard_screen.dart';
-import 'screens/control_screen.dart';
+import '../ui/view/screens/settings_screen.dart';
 import 'screens/focus_screen.dart';
 
 class NabBarScreen extends StatefulWidget {
@@ -16,12 +16,12 @@ class _NabBarScreenState extends State<NabBarScreen> {
   late final PageController _pageController;
   int _currentIndex = 0;
 
-  // Screens
+  // Screens (removed ControlScreen)
   final List<Widget> _screens = const [
     HomeScreen(),
-    ControlScreen(),
     FocusScreen(),
     StatisticsDashboardScreen(),
+    SettingsScreen(),
   ];
 
   @override
@@ -79,11 +79,6 @@ class _NabBarScreenState extends State<NabBarScreen> {
             label: 'الرئيسية',
           ),
           NavigationDestination(
-            icon: Icon(Icons.block_outlined),
-            selectedIcon: Icon(Icons.block),
-            label: 'التحكم',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.self_improvement_outlined),
             selectedIcon: Icon(Icons.self_improvement),
             label: 'التركيز',
@@ -92,6 +87,11 @@ class _NabBarScreenState extends State<NabBarScreen> {
             icon: Icon(Icons.bar_chart_outlined),
             selectedIcon: Icon(Icons.bar_chart),
             label: 'الإحصائيات',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'الإعدادات',
           ),
         ],
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import '../constants/app_constants.dart';
 import '../../feature/data/models/app_info.dart';
 import '../../feature/data/models/schedule.dart';
+import '../utils/app_logger.dart';
 
 class PlatformChannelService {
   static final PlatformChannelService _instance =
@@ -35,7 +36,7 @@ class PlatformChannelService {
         break;
 
       default:
-        print('Unknown method call: ${call.method}');
+        AppLogger.w('Unknown method call: ${call.method}');
     }
   }
 
@@ -48,7 +49,7 @@ class PlatformChannelService {
       );
       return result.map((app) => AppInfo.fromMap(app)).toList();
     } on PlatformException catch (e) {
-      print('Error getting installed apps: ${e.message}');
+      AppLogger.e('Error getting installed apps', e);
       return [];
     }
   }
@@ -61,8 +62,16 @@ class PlatformChannelService {
         AppConstants.methodCheckUsageStatsPermission,
       );
       return result;
+    } on MissingPluginException catch (e) {
+      AppLogger.w('Permission handler not ready: ${e.message}');
+      // Assume not granted if plugin not ready
+      return false;
     } on PlatformException catch (e) {
-      print('Error checking usage stats permission: ${e.message}');
+      if (e.message?.contains('Activity') ?? false) {
+        AppLogger.e('Activity not available for permission check', e);
+      } else {
+        AppLogger.e('Error checking usage stats permission', e);
+      }
       return false;
     }
   }
@@ -72,8 +81,14 @@ class PlatformChannelService {
       await _channel.invokeMethod(
         AppConstants.methodRequestUsageStatsPermission,
       );
+    } on MissingPluginException {
+      AppLogger.w('Permission handler not ready for request');
     } on PlatformException catch (e) {
-      print('Error requesting usage stats permission: ${e.message}');
+      if (e.message?.contains('Activity') ?? false) {
+        AppLogger.w('Activity not available for permission request');
+      } else {
+        AppLogger.e('Error requesting usage stats permission', e);
+      }
     }
   }
 
@@ -83,8 +98,15 @@ class PlatformChannelService {
         AppConstants.methodCheckOverlayPermission,
       );
       return result;
+    } on MissingPluginException catch (e) {
+      AppLogger.w('Permission handler not ready: ${e.message}');
+      return false;
     } on PlatformException catch (e) {
-      print('Error checking overlay permission: ${e.message}');
+      if (e.message?.contains('Activity') ?? false) {
+        AppLogger.e('Activity not available for permission check', e);
+      } else {
+        AppLogger.e('Error checking overlay permission', e);
+      }
       return false;
     }
   }
@@ -92,8 +114,14 @@ class PlatformChannelService {
   Future<void> requestOverlayPermission() async {
     try {
       await _channel.invokeMethod(AppConstants.methodRequestOverlayPermission);
+    } on MissingPluginException {
+      AppLogger.w('Permission handler not ready for request');
     } on PlatformException catch (e) {
-      print('Error requesting overlay permission: ${e.message}');
+      if (e.message?.contains('Activity') ?? false) {
+        AppLogger.w('Activity not available for permission request');
+      } else {
+        AppLogger.e('Error requesting overlay permission', e);
+      }
     }
   }
 
@@ -103,8 +131,15 @@ class PlatformChannelService {
         AppConstants.methodCheckAccessibilityPermission,
       );
       return result;
+    } on MissingPluginException catch (e) {
+      AppLogger.w('Permission handler not ready: ${e.message}');
+      return false;
     } on PlatformException catch (e) {
-      print('Error checking accessibility permission: ${e.message}');
+      if (e.message?.contains('Activity') ?? false) {
+        AppLogger.e('Activity not available for permission check', e);
+      } else {
+        AppLogger.e('Error checking accessibility permission', e);
+      }
       return false;
     }
   }
@@ -114,8 +149,49 @@ class PlatformChannelService {
       await _channel.invokeMethod(
         AppConstants.methodRequestAccessibilityPermission,
       );
+    } on MissingPluginException {
+      AppLogger.w('Permission handler not ready for request');
     } on PlatformException catch (e) {
-      print('Error requesting accessibility permission: ${e.message}');
+      if (e.message?.contains('Activity') ?? false) {
+        AppLogger.w('Activity not available for permission request');
+      } else {
+        AppLogger.e('Error requesting accessibility permission', e);
+      }
+    }
+  }
+
+  Future<bool> checkNotificationListenerPermission() async {
+    try {
+      final bool result = await _channel.invokeMethod(
+        AppConstants.methodCheckNotificationListenerPermission,
+      );
+      return result;
+    } on MissingPluginException catch (e) {
+      AppLogger.w('Permission handler not ready: ${e.message}');
+      return false;
+    } on PlatformException catch (e) {
+      if (e.message?.contains('Activity') ?? false) {
+        AppLogger.e('Activity not available for permission check', e);
+      } else {
+        AppLogger.e('Error checking notification listener permission', e);
+      }
+      return false;
+    }
+  }
+
+  Future<void> requestNotificationListenerPermission() async {
+    try {
+      await _channel.invokeMethod(
+        AppConstants.methodRequestNotificationListenerPermission,
+      );
+    } on MissingPluginException {
+      AppLogger.w('Permission handler not ready for request');
+    } on PlatformException catch (e) {
+      if (e.message?.contains('Activity') ?? false) {
+        AppLogger.w('Activity not available for permission request');
+      } else {
+        AppLogger.e('Error requesting notification listener permission', e);
+      }
     }
   }
 
@@ -125,7 +201,7 @@ class PlatformChannelService {
     try {
       await _channel.invokeMethod(AppConstants.methodStartMonitoringService);
     } on PlatformException catch (e) {
-      print('Error starting monitoring service: ${e.message}');
+      AppLogger.e('Error starting monitoring service', e);
     }
   }
 
@@ -133,7 +209,7 @@ class PlatformChannelService {
     try {
       await _channel.invokeMethod(AppConstants.methodStopMonitoringService);
     } on PlatformException catch (e) {
-      print('Error stopping monitoring service: ${e.message}');
+      AppLogger.e('Error stopping monitoring service', e);
     }
   }
 
@@ -141,7 +217,7 @@ class PlatformChannelService {
     try {
       await _channel.invokeMethod(AppConstants.methodStartUsageTrackingService);
     } on PlatformException catch (e) {
-      print('Error starting usage tracking service: ${e.message}');
+      AppLogger.e('Error starting usage tracking service', e);
     }
   }
 
@@ -149,29 +225,43 @@ class PlatformChannelService {
     try {
       await _channel.invokeMethod(AppConstants.methodStopUsageTrackingService);
     } on PlatformException catch (e) {
-      print('Error stopping usage tracking service: ${e.message}');
+      AppLogger.e('Error stopping usage tracking service', e);
+    }
+  }
+
+  Future<bool> isServiceRunning() async {
+    try {
+      final bool result = await _channel.invokeMethod(
+        AppConstants.methodIsServiceRunning,
+      );
+      return result;
+    } on PlatformException catch (e) {
+      AppLogger.e('Error checking if service is running', e);
+      return false;
     }
   }
 
   // ========== Update Blocked Apps and Schedules ==========
 
-  Future<void> updateBlockedApps(List<String> packageNames) async {
-    try {
-      await _channel.invokeMethod(AppConstants.methodUpdateBlockedApps, {
-        'packageNames': packageNames,
-      });
-    } on PlatformException catch (e) {
-      print('Error updating blocked apps: ${e.message}');
-    }
-  }
-
   Future<void> updateBlockedAppsJson(String appsJson) async {
     try {
+      print('📱 [CHANNEL] Sending updateBlockedAppsJson to native');
+      print(
+        '📱 [CHANNEL] JSON preview: ${appsJson.substring(0, (appsJson.length > 300 ? 300 : appsJson.length))}...',
+      );
+      print('📱 [CHANNEL] JSON size: ${appsJson.length} bytes');
+
       await _channel.invokeMethod('updateBlockedAppsJson', {
         'appsJson': appsJson,
       });
+
+      print('📱 [CHANNEL] ✅ Method invoked successfully!');
     } on PlatformException catch (e) {
-      print('Error updating blocked apps JSON: ${e.message}');
+      print('📱 [CHANNEL] ❌ PlatformException: ${e.message}');
+      AppLogger.e('Error updating blocked apps JSON', e);
+    } catch (e) {
+      print('📱 [CHANNEL] ❌ Exception: $e');
+      rethrow;
     }
   }
 
@@ -184,7 +274,7 @@ class PlatformChannelService {
         'schedules': scheduleMaps,
       });
     } on PlatformException catch (e) {
-      print('Error updating schedules: ${e.message}');
+      AppLogger.e('Error updating schedules', e);
     }
   }
 
@@ -196,11 +286,46 @@ class PlatformChannelService {
         'limitsJson': limitsJson,
       });
     } on PlatformException catch (e) {
-      print('Error updating usage limits: ${e.message}');
+      AppLogger.e('Error updating usage limits', e);
     }
   }
 
   // ========== Usage Statistics ==========
+
+  /// Phase 2 Optimization: Batched daily statistics call
+  /// Combines getTodayUsageFromTrackingService, getTodaySessionCountsFromTracking,
+  /// and getTodayBlockAttemptsFromTracking into a single native call
+  ///
+  /// Returns:
+  /// ```
+  /// {
+  ///   'usage': { 'packageName': milliseconds, ... },
+  ///   'sessions': { 'packageName': count, ... },
+  ///   'blockAttempts': { 'packageName': count, ... }
+  /// }
+  /// ```
+  Future<Map<String, dynamic>> getDailyStats() async {
+    try {
+      final Map<dynamic, dynamic> result = await _channel.invokeMethod(
+        'getDailyStats',
+      );
+
+      return {
+        'usage': _convertDynamicMap(result['usage'] ?? {}),
+        'sessions': _convertDynamicMap(result['sessions'] ?? {}),
+        'blockAttempts': _convertDynamicMap(result['blockAttempts'] ?? {}),
+      };
+    } on PlatformException catch (e) {
+      AppLogger.e('Error getting daily stats', e);
+      return {'usage': {}, 'sessions': {}, 'blockAttempts': {}};
+    }
+  }
+
+  /// Helper to convert dynamic maps to Map<String, int>
+  static Map<String, int> _convertDynamicMap(dynamic map) {
+    if (map is! Map) return {};
+    return map.map((key, value) => MapEntry(key.toString(), value as int));
+  }
 
   Future<Map<String, int>> getAppUsageStats(
     DateTime startTime,
@@ -215,7 +340,7 @@ class PlatformChannelService {
       // Convert dynamic map to Map<String, int>
       return result.map((key, value) => MapEntry(key.toString(), value as int));
     } on PlatformException catch (e) {
-      print('Error getting app usage stats: ${e.message}');
+      AppLogger.e('Error getting app usage stats', e);
       return {};
     }
   }
@@ -265,14 +390,14 @@ class PlatformChannelService {
       );
 
       if (result.isEmpty) {
-        print('UsageTrackingService data is empty or stale');
+        AppLogger.w('UsageTrackingService data is empty or stale');
         return {};
       }
 
       // Convert dynamic map to Map<String, int>
       return result.map((key, value) => MapEntry(key.toString(), value as int));
     } on PlatformException catch (e) {
-      print('Error getting today usage from tracking service: ${e.message}');
+      AppLogger.e('Error getting today usage from tracking service', e);
       return {};
     }
   }
@@ -289,7 +414,7 @@ class PlatformChannelService {
       // Convert dynamic map to Map<String, int>
       return result.map((key, value) => MapEntry(key.toString(), value as int));
     } on PlatformException catch (e) {
-      print('Error getting usage for date from tracking: ${e.message}');
+      AppLogger.e('Error getting usage for date from tracking', e);
       return {};
     }
   }
@@ -303,7 +428,7 @@ class PlatformChannelService {
 
       return result.map((date) => date.toString()).toList();
     } on PlatformException catch (e) {
-      print('Error getting pending snapshot dates: ${e.message}');
+      AppLogger.e('Error getting pending snapshot dates', e);
       return [];
     }
   }
@@ -313,7 +438,7 @@ class PlatformChannelService {
     try {
       await _channel.invokeMethod('clearPendingSnapshotDates');
     } on PlatformException catch (e) {
-      print('Error clearing pending snapshot dates: ${e.message}');
+      AppLogger.e('Error clearing pending snapshot dates', e);
     }
   }
 
@@ -330,7 +455,7 @@ class PlatformChannelService {
         'model': result['model'] as String,
       };
     } on PlatformException catch (e) {
-      print('Error checking OEM restrictions: ${e.message}');
+      AppLogger.e('Error checking OEM restrictions', e);
       return {
         'hasRestrictions': false,
         'manufacturer': 'unknown',
@@ -345,7 +470,7 @@ class PlatformChannelService {
       final bool result = await _channel.invokeMethod('cleanStoredUsageData');
       return result;
     } on PlatformException catch (e) {
-      print('Error cleaning stored usage data: ${e.message}');
+      AppLogger.e('Error cleaning stored usage data', e);
       return false;
     }
   }
@@ -384,7 +509,7 @@ class PlatformChannelService {
       // Convert dynamic map to Map<String, int>
       return result.map((key, value) => MapEntry(key.toString(), value as int));
     } on PlatformException catch (e) {
-      print('Error getting today session counts from tracking: ${e.message}');
+      AppLogger.e('Error getting today session counts from tracking', e);
       return {};
     }
   }
@@ -436,7 +561,7 @@ class PlatformChannelService {
       // Convert dynamic map to Map<String, int>
       return result.map((key, value) => MapEntry(key.toString(), value as int));
     } on PlatformException catch (e) {
-      print('Error getting block attempts for date: ${e.message}');
+      AppLogger.e('Error getting block attempts for date', e);
       return {};
     }
   }
@@ -475,7 +600,7 @@ class PlatformChannelService {
     try {
       await _channel.invokeMethod(AppConstants.methodEndFocusSession);
     } on PlatformException catch (e) {
-      print('Error ending focus session: ${e.message}');
+      AppLogger.e('Error ending focus session', e);
     }
   }
 
@@ -489,12 +614,10 @@ class PlatformChannelService {
         'style': style,
       });
     } on PlatformException catch (e) {
-      print('Error setting block screen style: ${e.message}');
-    } on MissingPluginException catch (e) {
+      AppLogger.e('Error setting block screen style', e);
+    } on MissingPluginException {
       // تجاهل على المنصات اللي مفيهاش تنفيذ (iOS/Web)
-      print(
-        'Block screen style not implemented on this platform: ${e.message}',
-      );
+      AppLogger.w('Block screen style not implemented on this platform');
     }
   }
 
@@ -508,6 +631,91 @@ class PlatformChannelService {
     } on PlatformException catch (e) {
       print('Error getting blocked apps JSON from native: ${e.message}');
       return null;
+    }
+  }
+
+  Future<void> syncBlockScreenCustomization(String color, String quote) async {
+    try {
+      await _channel.invokeMethod(
+        AppConstants.methodSyncBlockScreenCustomization,
+        {'color': color, 'quote': quote},
+      );
+    } on PlatformException catch (e) {
+      print('Error syncing block screen customization: ${e.message}');
+    }
+  }
+
+  // ========== Icon Cache Management (Phase 3.5) ==========
+
+  /// Preload app icons for list of packages
+  /// Call this on app startup to eliminate icon loading delays
+  Future<void> preloadAppIcons(List<String> packageNames) async {
+    try {
+      await _channel.invokeMethod('preloadAppIcons', {
+        'packageNames': packageNames,
+      });
+      AppLogger.i(
+        'Platform: Preload request sent for ${packageNames.length} icons',
+      );
+    } on PlatformException catch (e) {
+      AppLogger.e('Error preloading app icons', e);
+    }
+  }
+
+  /// Invalidate icon cache for specific app
+  /// Call when: app install, update, uninstall, reboot
+  Future<void> invalidateAppIcon(String packageName) async {
+    try {
+      await _channel.invokeMethod('invalidateAppIcon', {
+        'packageName': packageName,
+      });
+      AppLogger.d('Platform: Icon invalidated for $packageName');
+    } on PlatformException catch (e) {
+      AppLogger.e('Error invalidating app icon', e);
+    }
+  }
+
+  /// Clear entire icon cache
+  Future<void> clearIconCache() async {
+    try {
+      await _channel.invokeMethod('clearIconCache');
+      AppLogger.i('Platform: Icon cache cleared');
+    } on PlatformException catch (e) {
+      AppLogger.e('Error clearing icon cache', e);
+    }
+  }
+
+  /// Get icon cache statistics
+  Future<Map<String, dynamic>> getIconCacheStats() async {
+    try {
+      final result = await _channel.invokeMethod('getIconCacheStats');
+      return Map<String, dynamic>.from(result);
+    } on PlatformException catch (e) {
+      AppLogger.e('Error getting icon cache stats', e);
+      return {};
+    }
+  }
+
+  // ========== Explicit Cache Control (Phase 4) ==========
+
+  /// Force Accessibility Service to reload its cache from SharedPreferences immediately
+  /// Useful after critical setup steps to ensure zero latency
+  Future<bool> forceRefreshAccessibilityCache() async {
+    try {
+      final bool result = await _channel.invokeMethod('forceRefreshCache');
+      if (result) {
+        AppLogger.i(
+          'Platform: Accessibility cache refresh forced successfully',
+        );
+      } else {
+        AppLogger.w(
+          'Platform: Accessibility Service NOT running - cannot force refresh',
+        );
+      }
+      return result;
+    } on PlatformException catch (e) {
+      AppLogger.e('Error forcing cache refresh', e);
+      return false;
     }
   }
 }

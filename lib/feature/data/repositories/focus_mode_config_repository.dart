@@ -1,4 +1,3 @@
-import 'package:uuid/uuid.dart';
 import '../local/shared_prefs_service.dart';
 import '../models/focus_mode_config.dart';
 import '../models/focus_mode_presets.dart';
@@ -7,12 +6,12 @@ import '../models/app_info.dart';
 import '../../ui/view/widgets/focus_mode_card.dart';
 import 'focus_repository.dart';
 import '../../../core/services/platform_channel_service.dart';
+import '../../../core/utils/app_logger.dart';
 
 class FocusModeConfigRepository {
   final SharedPrefsService _prefsService;
   final FocusRepository _focusRepository;
   final PlatformChannelService _platformService;
-  final Uuid _uuid = const Uuid();
 
   FocusModeConfigRepository(
     this._prefsService,
@@ -47,9 +46,7 @@ class FocusModeConfigRepository {
     final config = await getConfigForMode(mode);
     if (config == null) return false;
 
-    final updatedConfig = config.copyWith(
-      lastUsedAt: DateTime.now(),
-    );
+    final updatedConfig = config.copyWith(lastUsedAt: DateTime.now());
 
     return await updateConfig(updatedConfig);
   }
@@ -68,7 +65,9 @@ class FocusModeConfigRepository {
       final installedApps = await _platformService.getInstalledApps();
 
       if (installedApps.isEmpty) {
-        print('Warning: No installed apps found. Skipping preset initialization.');
+        AppLogger.w(
+          'Warning: No installed apps found. Skipping preset initialization.',
+        );
         return false;
       }
 
@@ -79,10 +78,10 @@ class FocusModeConfigRepository {
 
       // 3. تعليم كمكتمل
       await _prefsService.setBool('focus_presets_initialized_v2', true);
-      print('Focus mode presets initialized successfully!');
+      AppLogger.i('Focus mode presets initialized successfully!');
       return true;
     } catch (e) {
-      print('Error initializing presets: $e');
+      AppLogger.e('Error initializing presets', e);
       return false;
     }
   }
@@ -98,7 +97,9 @@ class FocusModeConfigRepository {
       installedApps,
     );
 
-    print('Creating preset for ${modeType.displayName}: ${blockedPackages.length} apps');
+    print(
+      'Creating preset for ${modeType.displayName}: ${blockedPackages.length} apps',
+    );
 
     // إنشاء FocusList
     final focusList = FocusList(
@@ -163,7 +164,7 @@ class FocusModeConfigRepository {
     );
 
     if (!created) {
-      print('Failed to create custom focus list');
+      AppLogger.e('Failed to create custom focus list', null);
       return false;
     }
 
@@ -212,7 +213,7 @@ class FocusModeConfigRepository {
 
       return await updateConfig(resetConfig);
     } catch (e) {
-      print('Error resetting mode to default: $e');
+      AppLogger.e('Error resetting mode to default', e);
       return false;
     }
   }

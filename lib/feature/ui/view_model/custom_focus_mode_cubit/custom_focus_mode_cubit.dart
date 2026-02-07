@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../data/models/custom_focus_mode.dart';
 import '../../../data/repositories/custom_focus_mode_repository.dart';
+import '../../../../core/utils/app_logger.dart';
 import 'custom_focus_mode_state.dart';
 
 /// Cubit for managing custom focus modes
@@ -129,7 +130,7 @@ class CustomFocusModeCubit extends Cubit<CustomFocusModeState> {
       await loadCustomModes();
     } catch (e) {
       // Silent fail - not critical
-      print('Error updating last used: $e');
+      AppLogger.w('Error updating last used: $e');
     }
   }
 

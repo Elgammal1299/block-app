@@ -9,8 +9,6 @@ class AchievementsBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return BlocBuilder<GamificationCubit, GamificationState>(
       builder: (context, state) {
         if (state is GamificationLoading) {

@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Block App</string>
+    <string name="app_name">AppBlock</string>
     <string name="accessibility_service_description">This service is required to monitor and block apps during your focus time. It helps you stay focused by preventing access to distracting apps.</string>
 
     <!-- Block Overlay -->
-    <string name="blocked_app_title">App Blocked</string>
-    <string name="blocked_app_message">This app is blocked during your focus time.</string>
-    <string name="btn_unlock">Unlock</string>
-    <string name="btn_go_home">Go Home</string>
+    <string name="blocked_app_title">Blocked by AppBlock</string>
+    <string name="blocked_app_message">%1$s is blocked by Quick Block</string>
+    <string name="tried_to_open">You tried to open it</string>
+    <string name="stats_today">%1$d× Today</string>
+    <string name="stats_total">%1$d× Total</string>
+    <string name="color_primary">#1877F2</string>
+    <string name="btn_close">Close</string>
+    <string name="blocked_by_status">Blocked by AppBlock</string>
 
-    <!-- Unlock Challenge -->
+    <!-- Unlock Challenge (Keeping for other uses if any, but removing from overlay) -->
     <string name="unlock_challenge_title">Unlock Challenge</string>
     <string name="math_challenge_hint">Enter your answer</string>
     <string name="typing_challenge_hint">Type the sentence exactly</string>

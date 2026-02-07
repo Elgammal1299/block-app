@@ -8,6 +8,7 @@ import '../models/focus_session.dart';
 import '../models/focus_session_history.dart';
 import '../models/focus_mode_config.dart';
 import '../models/custom_focus_mode.dart';
+import '../models/block_screen_theme.dart';
 import '../../../core/constants/app_constants.dart';
 
 class SharedPrefsService {
@@ -26,8 +27,9 @@ class SharedPrefsService {
   // ========== Blocked Apps ==========
 
   Future<List<BlockedApp>> getBlockedApps() async {
-    final String? jsonString =
-        _preferences?.getString(AppConstants.keyBlockedApps);
+    final String? jsonString = _preferences?.getString(
+      AppConstants.keyBlockedApps,
+    );
     if (jsonString == null || jsonString.isEmpty) return [];
 
     final List<dynamic> jsonList = json.decode(jsonString);
@@ -38,7 +40,9 @@ class SharedPrefsService {
     final jsonList = apps.map((app) => app.toJson()).toList();
     final jsonString = json.encode(jsonList);
     return await _preferences?.setString(
-            AppConstants.keyBlockedApps, jsonString) ??
+          AppConstants.keyBlockedApps,
+          jsonString,
+        ) ??
         false;
   }
 
@@ -81,8 +85,9 @@ class SharedPrefsService {
   // ========== Schedules ==========
 
   Future<List<Schedule>> getSchedules() async {
-    final String? jsonString =
-        _preferences?.getString(AppConstants.keySchedules);
+    final String? jsonString = _preferences?.getString(
+      AppConstants.keySchedules,
+    );
     if (jsonString == null || jsonString.isEmpty) return [];
 
     final List<dynamic> jsonList = json.decode(jsonString);
@@ -93,7 +98,9 @@ class SharedPrefsService {
     final jsonList = schedules.map((schedule) => schedule.toJson()).toList();
     final jsonString = json.encode(jsonList);
     return await _preferences?.setString(
-            AppConstants.keySchedules, jsonString) ??
+          AppConstants.keySchedules,
+          jsonString,
+        ) ??
         false;
   }
 
@@ -126,8 +133,9 @@ class SharedPrefsService {
     final schedules = await getSchedules();
     final index = schedules.indexWhere((s) => s.id == scheduleId);
     if (index != -1) {
-      schedules[index] =
-          schedules[index].copyWith(isEnabled: !schedules[index].isEnabled);
+      schedules[index] = schedules[index].copyWith(
+        isEnabled: !schedules[index].isEnabled,
+      );
       return await saveSchedules(schedules);
     }
     return false;
@@ -136,8 +144,9 @@ class SharedPrefsService {
   // ========== Usage Limits ==========
 
   Future<List<AppUsageLimit>> getUsageLimits() async {
-    final String? jsonString =
-        _preferences?.getString(AppConstants.keyUsageLimits);
+    final String? jsonString = _preferences?.getString(
+      AppConstants.keyUsageLimits,
+    );
     if (jsonString == null || jsonString.isEmpty) return [];
 
     final List<dynamic> jsonList = json.decode(jsonString);
@@ -148,7 +157,9 @@ class SharedPrefsService {
     final jsonList = limits.map((limit) => limit.toJson()).toList();
     final jsonString = json.encode(jsonList);
     return await _preferences?.setString(
-            AppConstants.keyUsageLimits, jsonString) ??
+          AppConstants.keyUsageLimits,
+          jsonString,
+        ) ??
         false;
   }
 
@@ -178,7 +189,10 @@ class SharedPrefsService {
   }
 
   Future<bool> setLanguageCode(String languageCode) async {
-    return await _preferences?.setString(AppConstants.keyLanguageCode, languageCode) ??
+    return await _preferences?.setString(
+          AppConstants.keyLanguageCode,
+          languageCode,
+        ) ??
         false;
   }
 
@@ -189,7 +203,9 @@ class SharedPrefsService {
 
   Future<bool> setUnlockChallengeType(String type) async {
     return await _preferences?.setString(
-            AppConstants.keyUnlockChallengeType, type) ??
+          AppConstants.keyUnlockChallengeType,
+          type,
+        ) ??
         false;
   }
 
@@ -203,7 +219,56 @@ class SharedPrefsService {
 
   Future<bool> setBlockScreenStyle(String style) async {
     return await _preferences?.setString(
-            AppConstants.keyBlockScreenStyle, style) ??
+          AppConstants.keyBlockScreenStyle,
+          style,
+        ) ??
+        false;
+  }
+
+  Future<String> getBlockScreenColor() async {
+    return _preferences?.getString(AppConstants.keyBlockScreenColor) ??
+        '#050A1A';
+  }
+
+  Future<bool> setBlockScreenColor(String color) async {
+    return await _preferences?.setString(
+          AppConstants.keyBlockScreenColor,
+          color,
+        ) ??
+        false;
+  }
+
+  Future<String> getBlockScreenQuote() async {
+    return _preferences?.getString(AppConstants.keyBlockScreenQuote) ?? '';
+  }
+
+  Future<bool> setBlockScreenQuote(String quote) async {
+    return await _preferences?.setString(
+          AppConstants.keyBlockScreenQuote,
+          quote,
+        ) ??
+        false;
+  }
+
+  Future<List<BlockScreenTheme>> getBlockScreenThemes() async {
+    final String? jsonString = _preferences?.getString(
+      AppConstants.keyBlockScreenThemes,
+    );
+    if (jsonString == null || jsonString.isEmpty) return [];
+
+    final List<dynamic> jsonList = json.decode(jsonString);
+    return jsonList.map((json) => BlockScreenTheme.fromJson(json)).toList();
+  }
+
+  Future<bool> saveBlockScreenThemes(List<BlockScreenTheme> themes) async {
+    final List<Map<String, dynamic>> jsonList = themes
+        .map((t) => t.toJson())
+        .toList();
+    final String jsonString = json.encode(jsonList);
+    return await _preferences?.setString(
+          AppConstants.keyBlockScreenThemes,
+          jsonString,
+        ) ??
         false;
   }
 
@@ -236,16 +301,16 @@ class SharedPrefsService {
   }
 
   Future<bool> setLastFocusDate(String date) async {
-    return await _preferences?.setString(
-            AppConstants.keyLastFocusDate, date) ??
+    return await _preferences?.setString(AppConstants.keyLastFocusDate, date) ??
         false;
   }
 
   // ========== Focus Lists ==========
 
   Future<List<FocusList>> getFocusLists() async {
-    final String? jsonString =
-        _preferences?.getString(AppConstants.keyFocusLists);
+    final String? jsonString = _preferences?.getString(
+      AppConstants.keyFocusLists,
+    );
     if (jsonString == null || jsonString.isEmpty) return [];
 
     final List<dynamic> jsonList = json.decode(jsonString);
@@ -256,7 +321,9 @@ class SharedPrefsService {
     final jsonList = lists.map((list) => list.toJson()).toList();
     final jsonString = json.encode(jsonList);
     return await _preferences?.setString(
-            AppConstants.keyFocusLists, jsonString) ??
+          AppConstants.keyFocusLists,
+          jsonString,
+        ) ??
         false;
   }
 
@@ -288,8 +355,9 @@ class SharedPrefsService {
   // ========== Active Focus Session ==========
 
   Future<FocusSession?> getActiveSession() async {
-    final String? jsonString =
-        _preferences?.getString(AppConstants.keyActiveFocusSession);
+    final String? jsonString = _preferences?.getString(
+      AppConstants.keyActiveFocusSession,
+    );
     if (jsonString == null || jsonString.isEmpty) return null;
 
     try {
@@ -306,7 +374,9 @@ class SharedPrefsService {
     }
     final jsonString = json.encode(session.toJson());
     return await _preferences?.setString(
-            AppConstants.keyActiveFocusSession, jsonString) ??
+          AppConstants.keyActiveFocusSession,
+          jsonString,
+        ) ??
         false;
   }
 
@@ -318,13 +388,15 @@ class SharedPrefsService {
   // ========== Focus Session History ==========
 
   Future<List<FocusSessionHistory>> getSessionHistory({int limit = 50}) async {
-    final String? jsonString =
-        _preferences?.getString(AppConstants.keyFocusSessionHistory);
+    final String? jsonString = _preferences?.getString(
+      AppConstants.keyFocusSessionHistory,
+    );
     if (jsonString == null || jsonString.isEmpty) return [];
 
     final List<dynamic> jsonList = json.decode(jsonString);
-    final List<FocusSessionHistory> history =
-        jsonList.map((json) => FocusSessionHistory.fromJson(json)).toList();
+    final List<FocusSessionHistory> history = jsonList
+        .map((json) => FocusSessionHistory.fromJson(json))
+        .toList();
 
     // Sort by date descending and limit
     history.sort((a, b) => b.completedAt.compareTo(a.completedAt));
@@ -341,7 +413,9 @@ class SharedPrefsService {
     final jsonList = limitedHistory.map((h) => h.toJson()).toList();
     final jsonString = json.encode(jsonList);
     return await _preferences?.setString(
-            AppConstants.keyFocusSessionHistory, jsonString) ??
+          AppConstants.keyFocusSessionHistory,
+          jsonString,
+        ) ??
         false;
   }
 
@@ -352,7 +426,9 @@ class SharedPrefsService {
     final jsonList = limitedHistory.map((h) => h.toJson()).toList();
     final jsonString = json.encode(jsonList);
     return await _preferences?.setString(
-            AppConstants.keyFocusSessionHistory, jsonString) ??
+          AppConstants.keyFocusSessionHistory,
+          jsonString,
+        ) ??
         false;
   }
 
@@ -364,8 +440,9 @@ class SharedPrefsService {
   // ========== Focus Mode Configs ==========
 
   Future<List<FocusModeConfig>> getFocusModeConfigs() async {
-    final String? jsonString =
-        _preferences?.getString(AppConstants.keyFocusModeConfigs);
+    final String? jsonString = _preferences?.getString(
+      AppConstants.keyFocusModeConfigs,
+    );
     if (jsonString == null || jsonString.isEmpty) return [];
 
     final List<dynamic> jsonList = json.decode(jsonString);
@@ -376,7 +453,9 @@ class SharedPrefsService {
     final jsonList = configs.map((config) => config.toJson()).toList();
     final jsonString = json.encode(jsonList);
     return await _preferences?.setString(
-            AppConstants.keyFocusModeConfigs, jsonString) ??
+          AppConstants.keyFocusModeConfigs,
+          jsonString,
+        ) ??
         false;
   }
 
@@ -416,8 +495,9 @@ class SharedPrefsService {
   // ========== Custom Focus Modes ==========
 
   Future<List<CustomFocusMode>> getCustomFocusModes() async {
-    final String? jsonString =
-        _preferences?.getString(AppConstants.keyCustomFocusModes);
+    final String? jsonString = _preferences?.getString(
+      AppConstants.keyCustomFocusModes,
+    );
     if (jsonString == null || jsonString.isEmpty) return [];
 
     final List<dynamic> jsonList = json.decode(jsonString);
@@ -428,7 +508,9 @@ class SharedPrefsService {
     final jsonList = modes.map((mode) => mode.toJson()).toList();
     final jsonString = json.encode(jsonList);
     return await _preferences?.setString(
-            AppConstants.keyCustomFocusModes, jsonString) ??
+          AppConstants.keyCustomFocusModes,
+          jsonString,
+        ) ??
         false;
   }
 
@@ -474,7 +556,9 @@ class SharedPrefsService {
 
   Future<bool> setPresetsInitialized(bool value) async {
     return await _preferences?.setBool(
-            AppConstants.keyPresetsInitialized, value) ??
+          AppConstants.keyPresetsInitialized,
+          value,
+        ) ??
         false;
   }
 

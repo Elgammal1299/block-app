@@ -19,8 +19,18 @@ class AppConstants {
   static const String keyFocusSessionHistory = 'focus_session_history';
   static const String keyPresetsInitialized = 'presets_initialized';
   static const String keyBlockScreenStyle = 'block_screen_style';
+  static const String keyBlockScreenColor = 'block_screen_color';
+  static const String keyBlockScreenQuote = 'block_screen_quote';
+  static const String keyBlockScreenThemes = 'block_screen_themes';
   static const String keyFocusModeConfigs = 'focus_mode_configs';
   static const String keyCustomFocusModes = 'custom_focus_modes';
+  static const String keyUnlockChallengeConfig = 'unlock_challenge_config';
+
+  // Challenge Types
+  static const String challengeNone = 'none';
+  static const String challengeMath = 'math';
+  static const String challengeQuote = 'quote';
+  static const String challengeTimer = 'timer';
 
   // Platform Channel Methods
   static const String methodGetInstalledApps = 'getInstalledApps';
@@ -37,8 +47,10 @@ class AppConstants {
       'requestAccessibilityPermission';
   static const String methodStartMonitoringService = 'startMonitoringService';
   static const String methodStopMonitoringService = 'stopMonitoringService';
-  static const String methodStartUsageTrackingService = 'startUsageTrackingService';
-  static const String methodStopUsageTrackingService = 'stopUsageTrackingService';
+  static const String methodStartUsageTrackingService =
+      'startUsageTrackingService';
+  static const String methodStopUsageTrackingService =
+      'stopUsageTrackingService';
   static const String methodUpdateBlockedApps = 'updateBlockedApps';
   static const String methodUpdateSchedules = 'updateSchedules';
   static const String methodUpdateUsageLimits = 'updateUsageLimits';
@@ -46,11 +58,17 @@ class AppConstants {
   static const String methodStartFocusSession = 'startFocusSession';
   static const String methodEndFocusSession = 'endFocusSession';
   static const String methodSetBlockScreenStyle = 'setBlockScreenStyle';
+  static const String methodSyncBlockScreenCustomization =
+      'syncBlockScreenCustomization';
+  static const String methodCheckNotificationListenerPermission =
+      'checkNotificationListenerPermission';
+  static const String methodRequestNotificationListenerPermission =
+      'requestNotificationListenerPermission';
+  static const String methodIsServiceRunning = 'isServiceRunning';
 
   // Callback Methods (Native -> Flutter)
   static const String callbackOnAppBlocked = 'onAppBlocked';
-  static const String callbackOnServiceStatusChanged =
-      'onServiceStatusChanged';
+  static const String callbackOnServiceStatusChanged = 'onServiceStatusChanged';
 
   // Focus Mode Presets
   static const List<String> socialMediaPackages = [
@@ -96,4 +114,15 @@ class AppConstants {
     6: 'Saturday',
     7: 'Sunday',
   };
+
+  // Quotes for Unblocking Challenges
+  static const List<String> unblockQuotes = [
+    'النجاح هو القدرة على الانتقال من فشل إلى فشل دون فقدان الحماس.',
+    'الوقت هو أثمن ما يملكه الإنسان، فلا تضعه فيما لا ينفع.',
+    'الانضباط هو الجسر بين الأهداف والإنجازات.',
+    'لا تؤجل عمل اليوم إلى الغد.',
+    'العقل القوي يركز على الأفكار، والعقل المتوسط يركز على الأحداث.',
+    'سر النجاح هو الثبات على الهدف.',
+    'ما نفعله كل يوم هو ما يحدد من نحن.',
+  ];
 }
