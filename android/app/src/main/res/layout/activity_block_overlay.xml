@@ -137,10 +137,7 @@
             android:id="@+id/tv_motivational_quote"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-<<<<<<< Updated upstream
             android:text="&quot;الانضباط هو الجسر بين الأهداف والإنجاز.&quot;"
-=======
->>>>>>> Stashed changes
             android:textColor="#AAAAAA"
             android:textSize="15sp"
             android:textStyle="italic"

@@ -17,6 +17,20 @@ import android.app.usage.UsageStatsManager
 import android.os.PowerManager
 import android.content.BroadcastReceiver
 import android.content.IntentFilter
+import android.view.WindowManager
+import android.view.View
+import android.view.LayoutInflater
+import android.view.Gravity
+import android.view.ContextThemeWrapper
+import android.graphics.PixelFormat
+import android.os.Build
+import android.widget.TextView
+import android.widget.ImageView
+import android.widget.Button
+import com.example.block_app.R
+import com.example.block_app.utils.AppInfoUtil
+import android.provider.Settings
+import kotlin.random.Random
 
 class AppBlockerAccessibilityService : AccessibilityService() {
 
@@ -96,6 +110,11 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
     private var lastOverlayTime = 0L
     private var lastTargetPackage: String? = null
+    
+    // WindowManager Overlay
+    private var windowManager: WindowManager? = null
+    private var overlayView: View? = null
+    private var appInfoUtil: AppInfoUtil? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -118,6 +137,10 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs?.registerOnSharedPreferenceChangeListener(prefChangeListener)
+
+        // Initialize WindowManager and AppInfoUtil
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        appInfoUtil = AppInfoUtil(this)
 
         val info = AccessibilityServiceInfo()
         info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
@@ -147,6 +170,8 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         super.onDestroy()
         prefs?.unregisterOnSharedPreferenceChangeListener(prefChangeListener)
         unregisterScreenReceiver()
+        // Remove overlay if showing
+        removeBlockOverlay()
         // Close any open session
         endCurrentSession()
         // Re-enable legacy tracking service as fallback
@@ -766,8 +791,12 @@ class AppBlockerAccessibilityService : AccessibilityService() {
 
         Log.w(TAG, "🚫 Block Trigger [$source] for $packageName. Reason: $reason")
         
-        // 4. Launch Overlay
-        launchBlockOverlay(packageName, reason)
+        // 4. Launch Overlay (WindowManager)
+        showBlockOverlay(packageName, reason)
+        
+        // 5. Navigate Home (Optional but recommended to un-focus the app under the overlay)
+        // We do this immediately to stop the user from interacting with the app while the overlay loads
+        // performGlobalAction(GLOBAL_ACTION_HOME) // Can be too aggressive
         
         // 6. Persistence: Officially promote and increment count (Background thread)
         incrementBlockAttempts(packageName)
@@ -1045,11 +1074,159 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun launchBlockOverlay(packageName: String, blockReason: String? = null) {
-        Log.w(TAG, "🎬 LAUNCHING BLOCK OVERLAY for: $packageName (Reason: $blockReason)")
+    /**
+     * Shows the blocking overlay using WindowManager (TYPE_ACCESSIBILITY_OVERLAY or TYPE_APPLICATION_OVERLAY).
+     * This is more robust than starting an Activity from the background.
+     */
+    private fun showBlockOverlay(packageName: String, reason: String) {
+        // If we are already showing the overlay, check if we need to update it
+        if (overlayView != null) {
+            setupOverlayUI(overlayView!!, packageName, reason)
+            return
+        }
+
+        Log.w(TAG, "🎬 CREATING BLOCK OVERLAY for: $packageName (Reason: $reason)")
+        
+        try {
+            // Use a proper theme wrapper to ensure layout attributes resolve correctly
+            // R.style.NormalTheme is defined in styles.xml
+            val themedContext = ContextThemeWrapper(this, R.style.NormalTheme)
+            val inflater = LayoutInflater.from(themedContext)
+            
+            overlayView = inflater.inflate(R.layout.activity_block_overlay, null)
+            setupOverlayUI(overlayView!!, packageName, reason)
+
+            // Determine overlay type based on permission and availability
+            val overlayType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            } else {
+                WindowManager.LayoutParams.TYPE_PHONE
+            }
+            // Note: TYPE_ACCESSIBILITY_OVERLAY is theoretically better but sometimes restricted on MIUI/Oppo.
+            // TYPE_APPLICATION_OVERLAY works reliably if "Draw over other apps" is granted.
+
+            val layoutParams = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                overlayType, 
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or // Fullscreen including status bar
+                        WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                PixelFormat.TRANSLUCENT
+            )
+            
+            // Support display cutout (notch)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                layoutParams.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+            
+            layoutParams.gravity = Gravity.CENTER
+            
+            // Try adding the view
+            try {
+                windowManager?.addView(overlayView, layoutParams)
+                Log.d(TAG, "✅ Block overlay view added to WindowManager (Type: $overlayType)")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ First attempt failed (Type: $overlayType): ${e.message}")
+                
+                // Fallback to Accessibility Overlay specific type if Application Overlay failed
+                if (overlayType != WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY) {
+                     Log.w(TAG, "⚠️ Retrying with TYPE_ACCESSIBILITY_OVERLAY...")
+                     layoutParams.type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+                     windowManager?.addView(overlayView, layoutParams)
+                     Log.d(TAG, "✅ Block overlay view added to WindowManager (Type: Accessibility Overlay)")
+                } else {
+                    throw e
+                }
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Failed to add block overlay view: ${e.message}", e)
+            launchBlockOverlayFallback(packageName, reason)
+        }
+    }
+
+    private fun removeBlockOverlay() {
+        if (overlayView != null) {
+            try {
+                windowManager?.removeView(overlayView)
+                Log.d(TAG, "🗑️ Block overlay removed")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error removing overlay: ${e.message}")
+            } finally {
+                overlayView = null
+            }
+        }
+    }
+
+    private fun setupOverlayUI(view: View, packageName: String, reason: String) {
+        try {
+            val titleText = view.findViewById<TextView>(R.id.tv_blocked_title)
+            val messageText = view.findViewById<TextView>(R.id.tv_blocked_message)
+            val statsText = view.findViewById<TextView>(R.id.tv_stats)
+            val motivationalText = view.findViewById<TextView>(R.id.tv_motivational_quote)
+            val appIconView = view.findViewById<ImageView>(R.id.iv_blocked_app_icon)
+            val homeButton = view.findViewById<Button>(R.id.btn_go_home)
+            val closeX = view.findViewById<TextView>(R.id.btn_close_x)
+            val rootLayout = view.findViewById<View>(R.id.block_root_layout)
+
+            // App Info
+            val appName = appInfoUtil?.getAppName(packageName) ?: packageName
+            val appIcon = appInfoUtil?.getAppIcon(packageName)
+
+            if (appIcon != null) {
+                appIconView.setImageDrawable(appIcon)
+            } else {
+                appIconView.setImageResource(android.R.drawable.sym_def_app_icon)
+            }
+
+            titleText.text = getString(R.string.blocked_app_title) // Ensure these strings exist
+            messageText.text = getString(R.string.blocked_app_message, appName)
+            
+            // Random Wisdom
+            val wisdoms = resources.getStringArray(R.array.motivational_quotes)
+            if (wisdoms.isNotEmpty()) {
+                motivationalText.text = wisdoms[Random.nextInt(wisdoms.size)]
+            }
+
+            // Stats (Approximation using cached data)
+            // We can fetch from stats cache if needed, for now simplified
+             statsText.text = "" // Or fetch real stats
+
+            // Customization (Basic)
+            val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val customColor = prefs.getString("block_screen_color", "#050A1A") ?: "#050A1A"
+             try {
+                val colorInt = android.graphics.Color.parseColor(customColor)
+                rootLayout.setBackgroundColor(colorInt)
+             } catch (e: Exception) { }
+
+            // Actions
+            val goHomeAction = {
+                Log.d(TAG, "🏠 Overlay Home/Close clicked")
+                val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_HOME)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                startActivity(homeIntent)
+                removeBlockOverlay()
+            }
+
+            homeButton.setOnClickListener { goHomeAction() }
+            closeX.setOnClickListener { goHomeAction() }
+            
+            // Handle Back Key (hacky for view in window manager, requires focusable)
+            // For now, relies on Home button.
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting up overlay UI: ${e.message}")
+        }
+    }
+
+    private fun launchBlockOverlayFallback(packageName: String, blockReason: String? = null) {
+        Log.w(TAG, "🎬 LAUNCHING BLOCK OVERLAY (FALLBACK) for: $packageName")
         val intent = Intent(this, BlockOverlayActivity::class.java).apply {
-            // Using REORDER_TO_FRONT and SINGLE_TOP to bring existing instance to front 
-            // instead of recreating and causing flicker
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or 
                      Intent.FLAG_ACTIVITY_SINGLE_TOP or 
                      Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
@@ -1060,9 +1237,8 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         }
         try {
             startActivity(intent)
-            Log.d(TAG, "✅ Block overlay activity started successfully")
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to start block overlay: ${e.message}", e)
+            Log.e(TAG, "❌ Failed to start block overlay activity: ${e.message}", e)
         }
     }
 }
