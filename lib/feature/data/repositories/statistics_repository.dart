@@ -23,9 +23,9 @@ class StatisticsRepository {
   // Phase 2: Request-level caching for platform channel calls
   late final RequestCache<Map<String, dynamic>> _dailyStatsCache =
       RequestCache<Map<String, dynamic>>(
-    ttl: const Duration(seconds: 1),
-    maxEntries: 10,
-  );
+        ttl: const Duration(seconds: 1),
+        maxEntries: 10,
+      );
 
   StatisticsRepository(
     this._databaseService,
@@ -59,7 +59,9 @@ class StatisticsRepository {
         return;
       }
 
-      AppLogger.i('Processing ${pendingDates.length} pending snapshots from Native');
+      AppLogger.i(
+        'Processing ${pendingDates.length} pending snapshots from Native',
+      );
 
       for (final dateStr in pendingDates) {
         try {
@@ -721,10 +723,18 @@ class StatisticsRepository {
 
     // Phase 2: Use batched call with request caching
     // This eliminates 3 separate platform channel calls into 1 cached call
-    final dailyStats = await _dailyStatsCache.get(
-      'daily_stats',
-      () => _platformService.getDailyStats(),
-    );
+    final dailyStats = await _dailyStatsCache.get('daily_stats', () async {
+      try {
+        return await _platformService.getDailyStats();
+      } catch (e) {
+        AppLogger.e('Error getting daily stats from platform', e);
+        return {
+          'usage': <String, int>{},
+          'sessions': <String, int>{},
+          'blockAttempts': <String, int>{},
+        };
+      }
+    });
 
     Map<String, int> statsMap = dailyStats['usage'] ?? {};
     Map<String, int> sessionCounts = dailyStats['sessions'] ?? {};
@@ -743,8 +753,12 @@ class StatisticsRepository {
       AppLogger.i(
         'Using real-time data from UsageTrackingService (${statsMap.length} apps) - cached',
       );
-      AppLogger.i('Retrieved session counts for ${sessionCounts.length} apps - cached');
-      AppLogger.i('Retrieved block attempts for ${blockAttempts.length} apps - cached');
+      AppLogger.i(
+        'Retrieved session counts for ${sessionCounts.length} apps - cached',
+      );
+      AppLogger.i(
+        'Retrieved block attempts for ${blockAttempts.length} apps - cached',
+      );
     }
 
     // Filter out our own app (safety check in case native filter missed it)

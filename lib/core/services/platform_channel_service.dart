@@ -324,7 +324,9 @@ class PlatformChannelService {
   /// Helper to convert dynamic maps to Map<String, int>
   static Map<String, int> _convertDynamicMap(dynamic map) {
     if (map is! Map) return {};
-    return map.map((key, value) => MapEntry(key.toString(), value as int));
+    return map.map(
+      (key, value) => MapEntry(key.toString(), (value as num).toInt()),
+    );
   }
 
   Future<Map<String, int>> getAppUsageStats(

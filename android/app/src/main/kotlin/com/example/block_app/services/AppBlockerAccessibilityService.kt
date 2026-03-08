@@ -42,6 +42,7 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         private const val KEY_USAGE_LIMITS = "usage_limits"
         private const val KEY_TEMP_UNLOCK = "temp_unlock_until"
         private const val KEY_DYNAMIC_BLOCKS = "dynamic_blocked_apps" // Persistent usage-limit blocks
+        private const val KEY_DYNAMIC_BLOCKS_DATE = "dynamic_blocks_date" // Date when dynamic blocks were last reset
         private const val KEY_FOCUS_SESSION_PACKAGES = "focus_session_packages"
         private const val KEY_FOCUS_SESSION_END = "focus_session_end_time"
 
@@ -180,6 +181,19 @@ class AppBlockerAccessibilityService : AccessibilityService() {
         serviceScope.cancel()
     }
 
+    /**
+     * Immediately removes a single app from all in-memory caches.
+     * Called right after the user unblocks an app so the block screen stops showing
+     * without waiting for the next full refreshCache() cycle.
+     */
+    fun removeAppFromCache(packageName: String) {
+        synchronized(this@AppBlockerAccessibilityService) {
+            val wasInBlocked = cachedBlockedApps.remove(packageName) != null
+            val wasInDynamic = cachedDynamicBlocks.remove(packageName) != null
+            Log.d(TAG, "🗑️ removeAppFromCache: $packageName (blocked=$wasInBlocked, dynamic=$wasInDynamic)")
+        }
+    }
+
     fun refreshCache() { // Made public
         serviceScope.launch(Dispatchers.IO) {
             try {
@@ -268,7 +282,21 @@ class AppBlockerAccessibilityService : AccessibilityService() {
                     )
                 }
 
-                // 4. ✨ Dynamic Blocks
+                // 4. ✨ Dynamic Blocks — with daily reset
+                // Dynamic blocks (usage-limit blocks) are only valid for the day they were set.
+                // On a new calendar day, we wipe them so usage is measured from zero again.
+                val calendar = Calendar.getInstance()
+                val today = "${calendar.get(Calendar.YEAR)}-${calendar.get(Calendar.MONTH) + 1}-${calendar.get(Calendar.DAY_OF_MONTH)}"
+                val lastDynamicDate = p.getString(KEY_DYNAMIC_BLOCKS_DATE, "")
+
+                if (lastDynamicDate != today) {
+                    Log.d(TAG, "🗓️ New day detected ($lastDynamicDate → $today) - resetting dynamic blocks")
+                    p.edit()
+                        .putString(KEY_DYNAMIC_BLOCKS, "{}")
+                        .putString(KEY_DYNAMIC_BLOCKS_DATE, today)
+                        .commit()
+                }
+
                 val dynamicJson = p.getString(KEY_DYNAMIC_BLOCKS, "{}") ?: "{}"
                 val dynamicObj = JSONObject(dynamicJson)
                 val newDynamicBlocks = mutableMapOf<String, BlockConfig>()

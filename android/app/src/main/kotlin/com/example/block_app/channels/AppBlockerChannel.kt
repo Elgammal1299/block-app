@@ -213,6 +213,13 @@ class AppBlockerChannel(
                             
                             Log.d("AppBlockerChannel", "✅ Blocked apps JSON saved to SharedPreferences (success: $success)")
                             
+                            // ✨ Daily reset: wipe usage-limit dynamic blocks on a new calendar day
+                            resetDynamicBlocksIfNewDay(prefs)
+
+                            // ✨ FIX: Remove deleted apps from dynamic_blocked_apps AND memory cache
+                            // This prevents removed apps from re-appearing via the dynamic blocks merge.
+                            cleanDynamicBlocksForRemovedApps(appsJson, prefs)
+                            
                             // ✨ Explicitly refresh Accessibility Service cache for zero-latency hotswap
                             AppBlockerAccessibilityService.instance?.refreshCache()
                             
@@ -271,6 +278,29 @@ class AppBlockerChannel(
                         }
                     } catch (e: Exception) {
                         withContext(Dispatchers.Main) { result.error("ERROR", "Failed to update usage limits: ${e.message}", null) }
+                    }
+                }
+            }
+
+            // Phase 2: Batched daily stats for Dashboard optimization
+            "getDailyStats" -> {
+                channelScope.launch {
+                    try {
+                        val stats = withContext(Dispatchers.IO) {
+                            val usage = usageStatsUtil.getTodayUsageFromTrackingService()
+                            val sessions = usageStatsUtil.getTodaySessionCountsFromTracking()
+                            val attempts = usageStatsUtil.getTodayBlockAttemptsFromTracking()
+                            
+                            mapOf(
+                                "usage" to usage,
+                                "sessions" to sessions,
+                                "blockAttempts" to attempts
+                            )
+                        }
+                        result.success(stats)
+                    } catch (e: Exception) {
+                        Log.e("AppBlockerChannel", "Error getting daily stats", e)
+                        result.error("ERROR", "Failed to get daily stats: ${e.message}", null)
                     }
                 }
             }
@@ -747,5 +777,81 @@ class AppBlockerChannel(
     fun notifyServiceStatusChanged(isRunning: Boolean) {
         val args = mapOf("isRunning" to isRunning)
         channel.invokeMethod("onServiceStatusChanged", args)
+    }
+
+    /**
+     * Removes apps from `dynamic_blocked_apps` SharedPrefs that are no longer present
+     * in the new `blocked_apps` JSON. Also immediately evicts them from the
+     * Accessibility Service’s in-memory cache so the block screen stops showing at once.
+     *
+     * Must be called on a background thread (IO).
+     */
+    private fun cleanDynamicBlocksForRemovedApps(
+        newAppsJson: String,
+        prefs: android.content.SharedPreferences
+    ) {
+        try {
+            val newAppsArray = org.json.JSONArray(newAppsJson)
+            val newPackages = mutableSetOf<String>()
+            for (i in 0 until newAppsArray.length()) {
+                newPackages.add(newAppsArray.getJSONObject(i).getString("packageName"))
+            }
+
+            val dynamicJson = prefs.getString("dynamic_blocked_apps", "{}") ?: "{}"
+            val dynamicObj = org.json.JSONObject(dynamicJson)
+            val dynamicKeys = dynamicObj.keys().asSequence().toList()
+
+            val removedPackages = dynamicKeys.filter { !newPackages.contains(it) }
+
+            if (removedPackages.isEmpty()) return
+
+            for (pkg in removedPackages) {
+                dynamicObj.remove(pkg)
+                Log.d("AppBlockerChannel", "🗑️ Cleaned removed app from dynamic_blocked_apps: $pkg")
+            }
+
+            // Persist the cleaned dynamic blocks
+            prefs.edit().putString("dynamic_blocked_apps", dynamicObj.toString()).commit()
+
+            // Immediately evict from in-memory cache (no need to wait for refreshCache)
+            val service = AppBlockerAccessibilityService.instance
+            if (service != null) {
+                for (pkg in removedPackages) {
+                    service.removeAppFromCache(pkg)
+                }
+                Log.d("AppBlockerChannel", "✅ Immediately evicted ${removedPackages.size} removed app(s) from memory cache")
+            }
+        } catch (e: Exception) {
+            Log.e("AppBlockerChannel", "Error cleaning dynamic blocks: ${e.message}", e)
+        }
+    }
+    /**
+     * Resets `dynamic_blocked_apps` at the start of each new calendar day.
+     * Usage-limit blocks are only valid within the day they were triggered.
+     * Must be called on a background thread (IO).
+     */
+    private fun resetDynamicBlocksIfNewDay(prefs: android.content.SharedPreferences) {
+        try {
+            val calendar = java.util.Calendar.getInstance()
+            val today = "${calendar.get(java.util.Calendar.YEAR)}-" +
+                        "${calendar.get(java.util.Calendar.MONTH) + 1}-" +
+                        "${calendar.get(java.util.Calendar.DAY_OF_MONTH)}"
+
+            val lastDate = prefs.getString("dynamic_blocks_date", "")
+            if (lastDate != today) {
+                prefs.edit()
+                    .putString("dynamic_blocked_apps", "{}")
+                    .putString("dynamic_blocks_date", today)
+                    .commit()
+
+                // Also evict from memory cache immediately
+                AppBlockerAccessibilityService.instance?.let { service ->
+                    // refreshCache() will be called right after this, so just log
+                    Log.d("AppBlockerChannel", "🗓️ New day ($lastDate → $today) - dynamic blocks reset")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("AppBlockerChannel", "Error resetting dynamic blocks for new day: ${e.message}", e)
+        }
     }
 }

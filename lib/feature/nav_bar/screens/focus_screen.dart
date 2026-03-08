@@ -65,9 +65,9 @@ class _FocusScreenState extends State<FocusScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.background,
+ backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: colorScheme.background,
+        // backgroundColor: colorScheme.background,
         elevation: 0,
         title: const Text(
           'مؤقت التركيز',
@@ -318,10 +318,10 @@ class _FocusScreenState extends State<FocusScreen> {
     return Container(
       height: 160,
       decoration: BoxDecoration(
-        color: colorScheme.surface,
+        color: Colors.black,// colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
         border: isSelected
-            ? Border.all(color: colorScheme.primary.withOpacity(0.5), width: 2)
+            ? Border.all(color:  Colors.black,)//colorScheme.primary.withOpacity(0.5), width: 2)
             : null,
       ),
       child: Column(
@@ -356,7 +356,7 @@ class _FocusScreenState extends State<FocusScreen> {
       height: 180,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
+        color:  Colors.black,//colorScheme.surface,
         borderRadius: BorderRadius.circular(24),
       ),
       child: Column(
@@ -399,7 +399,7 @@ class _FocusScreenState extends State<FocusScreen> {
       child: Container(
         height: 180,
         decoration: BoxDecoration(
-          color: colorScheme.surface,
+          color: Colors.black,// colorScheme.surface,
           borderRadius: BorderRadius.circular(24),
           border: isSelected
               ? Border.all(color: colorScheme.primary, width: 2)
