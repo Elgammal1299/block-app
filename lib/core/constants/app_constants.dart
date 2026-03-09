@@ -1,6 +1,6 @@
 class AppConstants {
   // Platform Channel Names
-  static const String channelName = 'com.example.block_app/app_blocker';
+  static const String channelName = 'com.ahmedelgammal.appblock/app_blocker';
 
   // SharedPreferences Keys
   static const String keyBlockedApps = 'blocked_apps';
