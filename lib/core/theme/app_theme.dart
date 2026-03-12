@@ -4,15 +4,23 @@ class AppTheme {
   // Facebook-inspired Light Theme Colors
   static const Color _lightPrimaryColor = Color(0xFF1877F2); // Facebook Blue
   static const Color _lightSecondaryColor = Color(0xFF42B72A); // Facebook Green
-  static const Color _lightBackgroundColor = Color(0xFFF0F2F5); // Facebook Light Gray
+  static const Color _lightBackgroundColor = Color(
+    0xFFF0F2F5,
+  ); // Facebook Light Gray
   static const Color _lightSurfaceColor = Colors.white;
   static const Color _lightErrorColor = Color(0xFFE4405F); // Facebook Red/Pink
 
   // Facebook-inspired Dark Theme Colors
-  static const Color _darkPrimaryColor = Color(0xFF2D88FF); // Lighter Facebook Blue for dark
+  static const Color _darkPrimaryColor = Color(
+    0xFF2D88FF,
+  ); // Lighter Facebook Blue for dark
   static const Color _darkSecondaryColor = Color(0xFF42B72A); // Facebook Green
-  static const Color _darkBackgroundColor = Color(0xFF000000); // Pure black for AMOLED
-  static const Color _darkSurfaceColor = Color(0xFF1C1C1E); // Better contrast on pure black
+  static const Color _darkBackgroundColor = Color(
+    0xFF000000,
+  ); // Pure black for AMOLED
+  static const Color _darkSurfaceColor = Color(
+    0xFF1C1C1E,
+  ); // Better contrast on pure black
   static const Color _darkErrorColor = Color(0xFFE4405F); // Facebook Red/Pink
 
   // ============================================
@@ -50,7 +58,8 @@ class AppTheme {
 
   static const Color accentSuccess = Color(0xFF42B72A); // Same as secondary
   static const Color accentWarning = Color(0xFFFF9800); // Orange
-  static const Color accentInfo = Color(0xFF2D88FF);    // Same as dark primary
+  static const Color accentInfo = Color(0xFF2D88FF); // Same as dark primary
+  static const Color accentError = Color(0xFFE4405F); // Facebook Red/Pink
 
   // Light Theme - Facebook Style
   static ThemeData get lightTheme {
@@ -77,10 +86,7 @@ class AppTheme {
         shadowColor: const Color(0x0A000000),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusSmall),
-          side: BorderSide(
-            color: Colors.grey.shade300,
-            width: 0.5,
-          ),
+          side: BorderSide(color: Colors.grey.shade300, width: 0.5),
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
@@ -134,7 +140,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: _lightPrimaryColor, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
       dividerTheme: DividerThemeData(
         color: Colors.grey.shade300,
@@ -234,7 +243,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: _darkPrimaryColor, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
       dividerTheme: DividerThemeData(
         color: Colors.grey.shade800,
@@ -252,17 +264,44 @@ class AppTheme {
       // Text Theme for dark mode - Enhanced for pure black background
       textTheme: const TextTheme(
         // Headings - Pure white for maximum contrast
-        displayLarge: TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.w800),
-        displayMedium: TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.w700),
-        displaySmall: TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.w700),
-        headlineLarge: TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.w700),
-        headlineMedium: TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.w600),
-        headlineSmall: TextStyle(color: Color(0xFFFFFFFF), fontWeight: FontWeight.w600),
+        displayLarge: TextStyle(
+          color: Color(0xFFFFFFFF),
+          fontWeight: FontWeight.w800,
+        ),
+        displayMedium: TextStyle(
+          color: Color(0xFFFFFFFF),
+          fontWeight: FontWeight.w700,
+        ),
+        displaySmall: TextStyle(
+          color: Color(0xFFFFFFFF),
+          fontWeight: FontWeight.w700,
+        ),
+        headlineLarge: TextStyle(
+          color: Color(0xFFFFFFFF),
+          fontWeight: FontWeight.w700,
+        ),
+        headlineMedium: TextStyle(
+          color: Color(0xFFFFFFFF),
+          fontWeight: FontWeight.w600,
+        ),
+        headlineSmall: TextStyle(
+          color: Color(0xFFFFFFFF),
+          fontWeight: FontWeight.w600,
+        ),
 
         // Titles - Very light gray
-        titleLarge: TextStyle(color: Color(0xFFF5F5F5), fontWeight: FontWeight.w600),
-        titleMedium: TextStyle(color: Color(0xFFF5F5F5), fontWeight: FontWeight.w600),
-        titleSmall: TextStyle(color: Color(0xFFF5F5F5), fontWeight: FontWeight.w500),
+        titleLarge: TextStyle(
+          color: Color(0xFFF5F5F5),
+          fontWeight: FontWeight.w600,
+        ),
+        titleMedium: TextStyle(
+          color: Color(0xFFF5F5F5),
+          fontWeight: FontWeight.w600,
+        ),
+        titleSmall: TextStyle(
+          color: Color(0xFFF5F5F5),
+          fontWeight: FontWeight.w500,
+        ),
 
         // Body text - Enhanced for pure black
         bodyLarge: TextStyle(color: Color(0xFFE8E8E8)),

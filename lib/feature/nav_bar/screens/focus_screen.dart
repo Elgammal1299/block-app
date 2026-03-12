@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/DI/setup_get_it.dart';
 import '../../../core/services/platform_channel_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../ui/view_model/focus_session_cubit/focus_session_cubit.dart';
 import '../../ui/view_model/focus_session_cubit/focus_session_state.dart';
 import '../../ui/view_model/focus_list_cubit/focus_list_cubit.dart';
 import '../../ui/view_model/focus_list_cubit/focus_list_state.dart';
 import '../../ui/view/widgets/focus/flip_clock_timer.dart';
+import '../../ui/view/widgets/focus/focus_cards.dart';
 
 class FocusScreen extends StatefulWidget {
   const FocusScreen({super.key});
@@ -52,7 +54,10 @@ class _FocusScreenState extends State<FocusScreen> {
       bloc: getIt<FocusSessionCubit>(),
       builder: (context, state) {
         if (state is FocusSessionActive) {
-          return _buildActiveSessionView(state);
+          return _buildActiveSessionView(state, false);
+        }
+        if (state is FocusSessionPaused) {
+          return _buildActiveSessionView(state, true);
         }
         return _buildSetupView();
       },
@@ -62,16 +67,17 @@ class _FocusScreenState extends State<FocusScreen> {
   // --- SETUP VIEW ---
   Widget _buildSetupView() {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
     return Scaffold(
- backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        // backgroundColor: colorScheme.background,
         elevation: 0,
-        title: const Text(
+        backgroundColor: Colors.transparent,
+        title: Text(
           'مؤقت التركيز',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: false,
         actions: [
@@ -79,12 +85,11 @@ class _FocusScreenState extends State<FocusScreen> {
             IconButton(
               icon: const Icon(
                 Icons.warning_amber_rounded,
-                color: Colors.orange,
+                color: AppTheme.accentWarning,
               ),
               onPressed: () async {
                 await PlatformChannelService()
                     .requestNotificationListenerPermission();
-                // Check again after returning
                 Future.delayed(const Duration(seconds: 2), _checkPermissions);
               },
             ),
@@ -97,21 +102,26 @@ class _FocusScreenState extends State<FocusScreen> {
           children: [
             if (!hasNotificationPermission)
               Container(
-                margin: const EdgeInsets.only(bottom: 20),
-                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: AppTheme.spacing20),
+                padding: const EdgeInsets.all(AppTheme.spacing12),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                  color: AppTheme.accentWarning.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                  border: Border.all(
+                    color: AppTheme.accentWarning.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, color: Colors.orange),
-                    const SizedBox(width: 12),
-                    const Expanded(
+                    const Icon(
+                      Icons.info_outline,
+                      color: AppTheme.accentWarning,
+                    ),
+                    const SizedBox(width: AppTheme.spacing12),
+                    Expanded(
                       child: Text(
                         'للحظر الفعال للإشعارات، يرجى منح إذن الوصول للإشعارات. قد تحتاج لإعادة تشغيل التطبيق بالكامل بعد إضافة ميزات جديدة.',
-                        style: TextStyle(color: Colors.white70, fontSize: 13),
+                        style: theme.textTheme.bodySmall,
                       ),
                     ),
                     TextButton(
@@ -123,72 +133,83 @@ class _FocusScreenState extends State<FocusScreen> {
                 ),
               ),
             _buildSectionHeader('مدة الجلسة'),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppTheme.spacing16),
             Row(
               children: [
                 Expanded(
-                  child: _buildDurationCard(
-                    '25',
-                    'بومودورو',
+                  child: DurationCard(
+                    value: '25',
+                    label: 'بومودورو',
                     isSelected: workMinutes == 25,
+                    onTap: () => setState(() => workMinutes = 25),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppTheme.spacing12),
                 Expanded(
-                  child: _buildDurationCard(
-                    '5',
-                    'راحة قصيرة',
+                  child: DurationCard(
+                    value: '5',
+                    label: 'راحة قصيرة',
                     isSelected: breakMinutes == 5,
+                    onTap: () => setState(() => breakMinutes = 5),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppTheme.spacing12),
                 Expanded(
-                  child: _buildDurationCard(
-                    '15',
-                    'راحة طويلة',
+                  child: DurationCard(
+                    value: '15',
+                    label: 'راحة طويلة',
                     isSelected: longBreakMinutes == 15,
+                    onTap: () => setState(() => longBreakMinutes = 15),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 32),
             _buildSectionHeader('تفضيلات أخرى'),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppTheme.spacing16),
             Row(
               children: [
                 Expanded(
-                  child: _buildPreferenceCard(
-                    sessionsUntilLong.toString(),
-                    'جلسات قبل الراحة الطويلة',
+                  child: PreferenceCard(
+                    value: sessionsUntilLong.toString(),
+                    label: 'جلسات قبل الراحة الطويلة',
+                    onIncrement: () => setState(() => sessionsUntilLong++),
+                    onDecrement: () => setState(() {
+                      if (sessionsUntilLong > 1) sessionsUntilLong--;
+                    }),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppTheme.spacing16),
                 Expanded(
-                  child: _buildPreferenceCard(
-                    dailyGoal.toString(),
-                    'الهدف اليومي',
+                  child: PreferenceCard(
+                    value: dailyGoal.toString(),
+                    label: 'الهدف اليومي',
+                    onIncrement: () => setState(() => dailyGoal++),
+                    onDecrement: () => setState(() {
+                      if (dailyGoal > 1) dailyGoal--;
+                    }),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 32),
             _buildSectionHeader('نمط المؤقت'),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppTheme.spacing16),
             Row(
               children: [
                 Expanded(
-                  child: _buildStyleCard(
-                    '23:15',
-                    'قياسي',
+                  child: StyleCard(
+                    time: '23:15',
+                    label: 'قياسي',
                     isSelected: !isFlipStyle,
                     onTap: () => setState(() => isFlipStyle = false),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppTheme.spacing16),
                 Expanded(
-                  child: _buildStyleCard(
-                    '2 3 : 1 5',
-                    'ساعة قلابة',
+                  child: StyleCard(
+                    time: '2 3 : 1 5',
+                    label: 'ساعة قلابة',
                     isSelected: isFlipStyle,
                     onTap: () => setState(() => isFlipStyle = true),
                     isFlip: true,
@@ -204,19 +225,9 @@ class _FocusScreenState extends State<FocusScreen> {
               height: 56,
               child: ElevatedButton(
                 onPressed: _showStartSessionDialog,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
                 child: const Text(
                   'بدء الجلسة',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -228,50 +239,81 @@ class _FocusScreenState extends State<FocusScreen> {
   }
 
   // --- ACTIVE SESSION VIEW ---
-  Widget _buildActiveSessionView(FocusSessionActive state) {
-    final minutes = state.remainingSeconds ~/ 60;
-    final seconds = state.remainingSeconds % 60;
-    final colorScheme = Theme.of(context).colorScheme;
+  Widget _buildActiveSessionView(dynamic state, bool isPaused) {
+    final int remainingSeconds = state.remainingSeconds;
+    final minutes = remainingSeconds ~/ 60;
+    final seconds = remainingSeconds % 60;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final activeSession = state.activeSession;
 
     return Scaffold(
-      backgroundColor: colorScheme.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
             const SizedBox(height: 60),
             Text(
-              state.activeSession.focusListName.toUpperCase(),
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.5),
-                fontSize: 16,
+              activeSession.focusListName.toUpperCase(),
+              style: theme.textTheme.labelLarge?.copyWith(
                 letterSpacing: 2,
                 fontWeight: FontWeight.bold,
+                color: theme.textTheme.labelLarge?.color?.withValues(
+                  alpha: 0.5,
+                ),
               ),
             ),
             const Spacer(),
-            if (isFlipStyle)
-              FlipClockTimer(minutes: minutes, seconds: seconds)
-            else
-              Text(
-                '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 100,
-                  fontWeight: FontWeight.bold,
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 300,
+                  height: 300,
+                  child: CircularProgressIndicator(
+                    value:
+                        1 -
+                        (remainingSeconds /
+                            (activeSession.durationMinutes * 60)),
+                    strokeWidth: 8,
+                    backgroundColor: colorScheme.outline.withValues(alpha: 0.1),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      isPaused
+                          ? colorScheme.outline.withValues(alpha: 0.5)
+                          : colorScheme.primary.withValues(alpha: 0.8),
+                    ),
+                  ),
                 ),
-              ),
+                if (isFlipStyle)
+                  FlipClockTimer(minutes: minutes, seconds: seconds)
+                else
+                  Text(
+                    '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                    style: theme.textTheme.displayLarge?.copyWith(
+                      fontSize: 80,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+              ],
+            ),
             const Spacer(),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 IconButton(
                   onPressed: () {
-                    // TODO: Implement Pause
+                    if (isPaused) {
+                      getIt<FocusSessionCubit>().resumeSession();
+                    } else {
+                      getIt<FocusSessionCubit>().pauseSession();
+                    }
                   },
-                  icon: const Icon(
-                    Icons.pause_circle_filled,
-                    size: 70,
-                    color: Colors.white70,
+                  icon: Icon(
+                    isPaused
+                        ? Icons.play_circle_filled
+                        : Icons.pause_circle_filled,
+                    size: 80,
+                    color: colorScheme.primary.withValues(alpha: 0.8),
                   ),
                 ),
                 const SizedBox(width: 40),
@@ -279,10 +321,10 @@ class _FocusScreenState extends State<FocusScreen> {
                   onPressed: () {
                     getIt<FocusSessionCubit>().cancelSession();
                   },
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.stop_circle,
-                    size: 70,
-                    color: Colors.redAccent,
+                    size: 80,
+                    color: colorScheme.error,
                   ),
                 ),
               ],
@@ -296,180 +338,28 @@ class _FocusScreenState extends State<FocusScreen> {
 
   // UI Helpers
   Widget _buildSectionHeader(String title) {
+    final theme = Theme.of(context);
     return Center(
       child: Text(
         title,
-        style: TextStyle(
-          color: Colors.white.withOpacity(0.7),
-          fontSize: 14,
+        style: theme.textTheme.labelMedium?.copyWith(
           fontWeight: FontWeight.w600,
           letterSpacing: 1.2,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDurationCard(
-    String value,
-    String label, {
-    bool isSelected = false,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      height: 160,
-      decoration: BoxDecoration(
-        color: Colors.black,// colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: isSelected
-            ? Border.all(color:  Colors.black,)//colorScheme.primary.withOpacity(0.5), width: 2)
-            : null,
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 48,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPreferenceCard(String value, String label) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      height: 180,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color:  Colors.black,//colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 48,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStyleCard(
-    String time,
-    String label, {
-    bool isSelected = false,
-    bool isFlip = false,
-    VoidCallback? onTap,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        height: 180,
-        decoration: BoxDecoration(
-          color: Colors.black,// colorScheme.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: isSelected
-              ? Border.all(color: colorScheme.primary, width: 2)
-              : null,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Spacer(),
-            if (isFlip)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: time.split(' ').map((char) {
-                  if (char == ':')
-                    return const Text(
-                      ':',
-                      style: TextStyle(color: Colors.white, fontSize: 20),
-                    );
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2C2C2E),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      char,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              )
-            else
-              Text(
-                time,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            const Spacer(),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.5),
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
+          color: theme.textTheme.labelMedium?.color?.withValues(alpha: 0.7),
         ),
       ),
     );
   }
 
   void _showStartSessionDialog() {
+    final colorScheme = Theme.of(context).colorScheme;
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1C1C1E),
+      backgroundColor: colorScheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusLarge),
+        ),
       ),
       builder: (context) {
         return BlocBuilder<FocusListCubit, FocusListState>(

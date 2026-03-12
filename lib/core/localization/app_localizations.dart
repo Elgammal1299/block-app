@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 
 class AppLocalizations {
-        String get noAppsFound => translate('no_apps_found');
-        String get noBlockedApps => translate('no_blocked_apps');
-        String get noBlockedAppsHint => translate('no_blocked_apps_hint');
-        String get blockApps => translate('block_apps');
-      String get searchNoResultHint => translate('search_no_result_hint');
-    // Blocked Apps List Screen
-    String get unblockAppInfo => translate('unblock_app_info');
-    String get unblock => translate('unblock');
-    String get unblockAllInfo => translate('unblock_all_info');
-    String get unblockAll => translate('unblock_all');
+  String get noAppsFound => translate('no_apps_found');
+  String get noBlockedApps => translate('no_blocked_apps');
+  String get noBlockedAppsHint => translate('no_blocked_apps_hint');
+  String get blockApps => translate('block_apps');
+  String get searchNoResultHint => translate('search_no_result_hint');
+  // Blocked Apps List Screen
+  String get unblockAppInfo => translate('unblock_app_info');
+  String get unblock => translate('unblock');
+  String get unblockAllInfo => translate('unblock_all_info');
+  String get unblockAll => translate('unblock_all');
   final Locale locale;
 
   AppLocalizations(this.locale);
@@ -120,14 +120,17 @@ class AppLocalizations {
   String get alwaysBlocked => translate('always_blocked');
   String get alwaysBlockedDesc => translate('always_blocked_desc');
   String get useExistingSchedules => translate('use_existing_schedules');
-  String get selectFromCreatedSchedules => translate('select_from_created_schedules');
-  String get noSchedulesAvailableCreate => translate('no_schedules_available_create');
+  String get selectFromCreatedSchedules =>
+      translate('select_from_created_schedules');
+  String get noSchedulesAvailableCreate =>
+      translate('no_schedules_available_create');
   String get createCustomSchedule => translate('create_custom_schedule');
   String get setSpecificTime => translate('set_specific_time');
   String get setSchedule => translate('set_schedule');
   String get editScheduleButton => translate('edit_schedule_button');
   String get saveAndApply => translate('save_and_apply');
-  String get appsConfiguredSuccessfully => translate('apps_configured_successfully');
+  String get appsConfiguredSuccessfully =>
+      translate('apps_configured_successfully');
   String get noSchedulesSelected => translate('no_schedules_selected');
   String get noCustomScheduleSet => translate('no_custom_schedule_set');
   String get blockTime => translate('block_time');
@@ -142,6 +145,21 @@ class AppLocalizations {
   String get permissionGranted => translate('permission_granted');
   String get permissionDenied => translate('permission_denied');
   String get continueToApp => translate('continue_to_app');
+
+  // Onboarding
+  String get onboardingUsageTitle => translate('onboarding_usage_title');
+  String get onboardingUsageDesc => translate('onboarding_usage_desc');
+  String get onboardingOverlayTitle => translate('onboarding_overlay_title');
+  String get onboardingOverlayDesc => translate('onboarding_overlay_desc');
+  String get onboardingAccessibilityTitle =>
+      translate('onboarding_accessibility_title');
+  String get onboardingAccessibilityDesc =>
+      translate('onboarding_accessibility_desc');
+  String get onboardingNext => translate('onboarding_next');
+  String get onboardingStart => translate('onboarding_start');
+  String get onboardingEnable => translate('onboarding_enable');
+  String get onboardingNotificationTitle => translate('onboarding_notification_title');
+  String get onboardingNotificationDesc => translate('onboarding_notification_desc');
 
   // Theme
   String get darkMode => translate('dark_mode');
@@ -162,8 +180,10 @@ class AppLocalizations {
   String get minutes => translate('minutes');
 
   // Messages
-  String appsConfigured(int count) => translate('apps_configured').replaceAll('{count}', count.toString());
-  String schedulesSelected(int count) => translate('schedules_selected').replaceAll('{count}', count.toString());
+  String appsConfigured(int count) =>
+      translate('apps_configured').replaceAll('{count}', count.toString());
+  String schedulesSelected(int count) =>
+      translate('schedules_selected').replaceAll('{count}', count.toString());
 
   // Focus Mode
   String get focusLists => translate('focus_lists');
@@ -173,7 +193,8 @@ class AppLocalizations {
   String get focusListDetail => translate('focus_list_detail');
   String get editList => translate('edit_list');
   String get deleteList => translate('delete_list');
-  String appsCount(int count) => translate('apps_count').replaceAll('{count}', count.toString());
+  String appsCount(int count) =>
+      translate('apps_count').replaceAll('{count}', count.toString());
   String get selectDuration => translate('select_duration');
   String get minutesShort => translate('minutes_short');
   String get customDuration => translate('custom_duration');
@@ -188,7 +209,9 @@ class AppLocalizations {
   String get blockedAppsLabel => translate('blocked_apps_label');
   String get sessionCompleted => translate('session_completed');
   String get greatJob => translate('great_job');
-  String sessionSuccessMessage(int duration) => translate('session_success_message').replaceAll('{duration}', duration.toString());
+  String sessionSuccessMessage(int duration) => translate(
+    'session_success_message',
+  ).replaceAll('{duration}', duration.toString());
   String get backToLists => translate('back_to_lists');
   String get focusHistory => translate('focus_history');
   String get totalSessions => translate('total_sessions');
@@ -201,17 +224,23 @@ class AppLocalizations {
   String get yesterday => translate('yesterday');
   String get thisWeek => translate('this_week');
   String get focusStreak => translate('focus_streak');
-  String daysStreak(int days) => translate('days_streak').replaceAll('{days}', days.toString());
+  String daysStreak(int days) =>
+      translate('days_streak').replaceAll('{days}', days.toString());
   String get currentStreak => translate('current_streak');
   String get longestStreak => translate('longest_streak');
   String get keepStreak => translate('keep_streak');
   String get presetSocialMedia => translate('preset_social_media');
   String get presetGames => translate('preset_games');
   String get presetCustom => translate('preset_custom');
-  String get notificationSessionStarted => translate('notification_session_started');
-  String notificationTimeRemaining(int minutes) => translate('notification_time_remaining').replaceAll('{minutes}', minutes.toString());
-  String get notificationSessionCompleted => translate('notification_session_completed');
-  String get notificationActionCancel => translate('notification_action_cancel');
+  String get notificationSessionStarted =>
+      translate('notification_session_started');
+  String notificationTimeRemaining(int minutes) => translate(
+    'notification_time_remaining',
+  ).replaceAll('{minutes}', minutes.toString());
+  String get notificationSessionCompleted =>
+      translate('notification_session_completed');
+  String get notificationActionCancel =>
+      translate('notification_action_cancel');
   String get errorSessionActive => translate('error_session_active');
   String get errorInvalidDuration => translate('error_invalid_duration');
   String get errorNoAppsSelected => translate('error_no_apps_selected');
@@ -238,10 +267,13 @@ class AppLocalizations {
   String get focusTimer => translate('focus_timer');
   String get activeSchedule => translate('active_schedule');
   String get achievements => translate('achievements');
-  String level(int levelNum) => translate('level').replaceAll('{level}', levelNum.toString());
-  String xpPoints(int xp) => translate('xp_points').replaceAll('{xp}', xp.toString());
+  String level(int levelNum) =>
+      translate('level').replaceAll('{level}', levelNum.toString());
+  String xpPoints(int xp) =>
+      translate('xp_points').replaceAll('{xp}', xp.toString());
   String get smartSuggestions => translate('smart_suggestions');
-  String tryFocusMode(String mode) => translate('try_focus_mode').replaceAll('{mode}', mode);
+  String tryFocusMode(String mode) =>
+      translate('try_focus_mode').replaceAll('{mode}', mode);
   String get nextSchedule => translate('next_schedule');
   String get noActiveSchedule => translate('no_active_schedule');
   String get editGoal => translate('edit_goal');
@@ -264,23 +296,26 @@ class AppLocalizations {
 
 // English translations
 const Map<String, String> _enStrings = {
-    // Blocked Apps List Screen
-    'unblock_app_confirm': 'Are you sure you want to unblock "{appName}"?',
-    'unblock_app_info': 'This app will no longer be blocked and can be used freely.',
-    'unblock': 'Unblock',
-    'unblock_all': 'Unblock All',
-    'unblock_all_confirm': 'Are you sure you want to unblock ALL {count} apps?',
-    'unblock_all_info': 'This will remove all blocked apps and their schedules. This action cannot be undone.',
-    'app_unblocked': '{appName} has been unblocked',
-    'all_apps_unblocked': 'All {count} apps have been unblocked',
-    'no_blocked_apps': 'No Blocked Apps',
-    'no_apps_found': 'No apps found',
-    'no_blocked_apps_hint': "You haven't blocked any apps yet.\nTap the button below to add some.",
-    'search_no_result_hint': 'Try searching with a different keyword',
-    'block_apps': 'Block Apps',
-    'block_attempts_count': '{count} block attempts',
-    'always_blocked_247': 'Always blocked (24/7)',
-    'schedules_count': '{count} schedule(s)',
+  // Blocked Apps List Screen
+  'unblock_app_confirm': 'Are you sure you want to unblock "{appName}"?',
+  'unblock_app_info':
+      'This app will no longer be blocked and can be used freely.',
+  'unblock': 'Unblock',
+  'unblock_all': 'Unblock All',
+  'unblock_all_confirm': 'Are you sure you want to unblock ALL {count} apps?',
+  'unblock_all_info':
+      'This will remove all blocked apps and their schedules. This action cannot be undone.',
+  'app_unblocked': '{appName} has been unblocked',
+  'all_apps_unblocked': 'All {count} apps have been unblocked',
+  'no_blocked_apps': 'No Blocked Apps',
+  'no_apps_found': 'No apps found',
+  'no_blocked_apps_hint':
+      "You haven't blocked any apps yet.\nTap the button below to add some.",
+  'search_no_result_hint': 'Try searching with a different keyword',
+  'block_apps': 'Block Apps',
+  'block_attempts_count': '{count} block attempts',
+  'always_blocked_247': 'Always blocked (24/7)',
+  'schedules_count': '{count} schedule(s)',
   // Common
   'app_name': 'App Blocker',
   'ok': 'OK',
@@ -384,6 +419,21 @@ const Map<String, String> _enStrings = {
   'permission_granted': 'Granted',
   'permission_denied': 'Not Granted',
   'continue_to_app': 'Continue to App',
+  'onboarding_usage_title': 'Usage Statistics',
+  'onboarding_usage_desc':
+      'We need this to track how much time you spend on apps and to identify when a blocked app is opened.',
+  'onboarding_overlay_title': 'Screen Overlay',
+  'onboarding_overlay_desc':
+      'This allows us to show a blocking screen over distracting apps so you can stay focused.',
+  'onboarding_accessibility_title': 'Accessibility Service',
+  'onboarding_accessibility_desc':
+      'The most reliable way to monitor app launches and block them instantly. Your privacy is protected.',
+  'onboarding_next': 'Next',
+  'onboarding_start': 'Get Started',
+  'onboarding_enable': 'Enable Now',
+  'onboarding_notification_title': 'Notification Access',
+  'onboarding_notification_desc':
+      'Required to intercept and block notifications from restricted apps instantly.',
 
   // Theme
   'dark_mode': 'Dark Mode',
@@ -505,23 +555,27 @@ const Map<String, String> _enStrings = {
 
 // Arabic translations
 const Map<String, String> _arStrings = {
-    // Blocked Apps List Screen
-    'unblock_app_confirm': 'هل أنت متأكد أنك تريد إلغاء حظر "{appName}"؟',
-    'unblock_app_info': 'لن يكون هذا التطبيق محظوراً بعد الآن ويمكن استخدامه بحرية.',
-    'unblock': 'إلغاء الحظر',
-    'unblock_all': 'إلغاء حظر الكل',
-    'unblock_all_confirm': 'هل أنت متأكد أنك تريد إلغاء حظر جميع التطبيقات ({count})؟',
-    'unblock_all_info': 'سيتم إزالة جميع التطبيقات المحظورة وجداولها. لا يمكن التراجع عن هذا الإجراء.',
-    'app_unblocked': 'تم إلغاء حظر {appName}',
-    'all_apps_unblocked': 'تم إلغاء حظر جميع التطبيقات ({count})',
-    'no_blocked_apps': 'لا توجد تطبيقات محظورة',
-    'no_apps_found': 'لم يتم العثور على تطبيقات',
-    'no_blocked_apps_hint': 'لم تقم بحظر أي تطبيقات بعد.\nاضغط على الزر بالأسفل لإضافة بعض التطبيقات.',
-    'search_no_result_hint': 'جرّب البحث بكلمة أخرى',
-    'block_apps': 'حظر تطبيقات',
-    'block_attempts_count': '{count} محاولة حظر',
-    'always_blocked_247': 'محظور دائماً (24/7)',
-    'schedules_count': '{count} جدول',
+  // Blocked Apps List Screen
+  'unblock_app_confirm': 'هل أنت متأكد أنك تريد إلغاء حظر "{appName}"؟',
+  'unblock_app_info':
+      'لن يكون هذا التطبيق محظوراً بعد الآن ويمكن استخدامه بحرية.',
+  'unblock': 'إلغاء الحظر',
+  'unblock_all': 'إلغاء حظر الكل',
+  'unblock_all_confirm':
+      'هل أنت متأكد أنك تريد إلغاء حظر جميع التطبيقات ({count})؟',
+  'unblock_all_info':
+      'سيتم إزالة جميع التطبيقات المحظورة وجداولها. لا يمكن التراجع عن هذا الإجراء.',
+  'app_unblocked': 'تم إلغاء حظر {appName}',
+  'all_apps_unblocked': 'تم إلغاء حظر جميع التطبيقات ({count})',
+  'no_blocked_apps': 'لا توجد تطبيقات محظورة',
+  'no_apps_found': 'لم يتم العثور على تطبيقات',
+  'no_blocked_apps_hint':
+      'لم تقم بحظر أي تطبيقات بعد.\nاضغط على الزر بالأسفل لإضافة بعض التطبيقات.',
+  'search_no_result_hint': 'جرّب البحث بكلمة أخرى',
+  'block_apps': 'حظر تطبيقات',
+  'block_attempts_count': '{count} محاولة حظر',
+  'always_blocked_247': 'محظور دائماً (24/7)',
+  'schedules_count': '{count} جدول',
   // Common
   'app_name': 'حاجب التطبيقات',
   'ok': 'موافق',
@@ -625,6 +679,21 @@ const Map<String, String> _arStrings = {
   'permission_granted': 'ممنوح',
   'permission_denied': 'غير ممنوح',
   'continue_to_app': 'الاستمرار للتطبيق',
+  'onboarding_usage_title': 'إحصائيات الاستخدام',
+  'onboarding_usage_desc':
+      'نحتاج لهذا الإذن لتتبع الوقت الذي تقضيه على التطبيقات ومعرفة متى يتم فتح تطبيق محظور.',
+  'onboarding_overlay_title': 'التراكب فوق التطبيقات',
+  'onboarding_overlay_desc':
+      'يسمح لنا هذا بعرض شاشة الحظر فوق التطبيقات المشتتة لتتمكن من البقاء مركزاً.',
+  'onboarding_accessibility_title': 'خدمة إمكانية الوصول',
+  'onboarding_accessibility_desc':
+      'الطريقة الأكثر موثوقية لمراقبة تشغيل التطبيقات وحظرها فوراً. خصوصيتك محمية دائماً.',
+  'onboarding_next': 'التالي',
+  'onboarding_start': 'ابدأ الآن',
+  'onboarding_enable': 'تفعيل الآن',
+  'onboarding_notification_title': 'الوصول للإشعارات',
+  'onboarding_notification_desc':
+      'مطلوب لاعتراض وحظر الإشعارات من التطبيقات المقيدة فوراً.',
 
   // Theme
   'dark_mode': 'الوضع الداكن',

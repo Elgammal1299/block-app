@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:app_block/core/router/app_routes.dart';
 import 'package:app_block/core/router/router_transitions.dart';
 import 'package:app_block/feature/ui/view/screens/permissions_guide_screen.dart';
+import 'package:app_block/feature/ui/view/screens/splash_screen.dart';
 import 'package:app_block/feature/nav_bar/nav_bar_screen.dart';
 import 'package:app_block/feature/ui/view/screens/app_selection_screen.dart';
 import 'package:app_block/feature/ui/view/screens/schedule_screen.dart';
@@ -29,6 +30,9 @@ class AppRouter {
   static Route? generateRoute(RouteSettings settings) {
     switch (settings.name) {
       // Main routes
+      case AppRoutes.splash:
+        return RouterTransitions.buildFade(const SplashScreen());
+
       case AppRoutes.permissions:
         return RouterTransitions.build(
           const PermissionsGuideScreen(),

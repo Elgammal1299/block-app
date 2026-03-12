@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../../core/services/platform_channel_service.dart';
+import '../../../../core/services/cached_prefs_service.dart';
+import '../../../../core/DI/setup_get_it.dart';
+import '../../../../core/router/app_routes.dart';
+import '../../../../core/localization/app_localizations.dart';
 
 class PermissionsGuideScreen extends StatefulWidget {
   const PermissionsGuideScreen({super.key});
@@ -9,11 +13,17 @@ class PermissionsGuideScreen extends StatefulWidget {
 }
 
 class _PermissionsGuideScreenState extends State<PermissionsGuideScreen> {
-  final PlatformChannelService _platformService = PlatformChannelService();
+  final PageController _pageController = PageController();
+  final PlatformChannelService _platformService =
+      getIt<PlatformChannelService>();
+  final CachedPreferencesService _prefsService =
+      getIt<CachedPreferencesService>();
 
+  int _currentPage = 0;
   bool _usageStatsGranted = false;
   bool _overlayGranted = false;
   bool _accessibilityGranted = false;
+  bool _notificationListenerGranted = false;
 
   @override
   void initState() {
@@ -25,208 +35,398 @@ class _PermissionsGuideScreenState extends State<PermissionsGuideScreen> {
     final usageStats = await _platformService.checkUsageStatsPermission();
     final overlay = await _platformService.checkOverlayPermission();
     final accessibility = await _platformService.checkAccessibilityPermission();
+    final notificationListener =
+        await _platformService.checkNotificationListenerPermission();
 
-    setState(() {
-      _usageStatsGranted = usageStats;
-      _overlayGranted = overlay;
-      _accessibilityGranted = accessibility;
-    });
+    if (mounted) {
+      setState(() {
+        _usageStatsGranted = usageStats;
+        _overlayGranted = overlay;
+        _accessibilityGranted = accessibility;
+        _notificationListenerGranted = notificationListener;
+      });
+    }
   }
 
-  bool get _allPermissionsGranted =>
-      _usageStatsGranted && _overlayGranted && _accessibilityGranted;
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onNext() async {
+    if (_currentPage < 3) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOutQuart,
+      );
+    } else {
+      // Last page - ensure all permissions are double-checked
+      await _checkPermissions();
+      if (_usageStatsGranted &&
+          _overlayGranted &&
+          _accessibilityGranted &&
+          _notificationListenerGranted) {
+        // Save onboarding completion status
+        await _prefsService.setOnboardingCompleted(true);
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please grant all permissions to continue'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Permissions Setup')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Required Permissions',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'This app needs special permissions to monitor and block apps. Please grant all permissions below.',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            const SizedBox(height: 24),
-
-            Expanded(
-              child: ListView(
-                children: [
-                  _buildPermissionCard(
-                    title: 'Usage Stats Access',
-                    description:
-                        'Required to monitor which apps are currently running and track usage statistics.',
-                    icon: Icons.bar_chart,
-                    color: Colors.blue,
-                    isGranted: _usageStatsGranted,
-                    onRequest: () async {
-                      await _platformService.requestUsageStatsPermission();
-                      await Future.delayed(const Duration(seconds: 2));
-                      _checkPermissions();
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPermissionCard(
-                    title: 'Draw Over Other Apps',
-                    description:
-                        'Required to show the blocking screen when you try to open a blocked app.',
-                    icon: Icons.layers,
-                    color: Colors.orange,
-                    isGranted: _overlayGranted,
-                    onRequest: () async {
-                      await _platformService.requestOverlayPermission();
-                      await Future.delayed(const Duration(seconds: 2));
-                      _checkPermissions();
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildPermissionCard(
-                    title: 'Accessibility Service',
-                    description:
-                        'Required to detect when blocked apps are opened and prevent access to them. This is the most important permission.',
-                    icon: Icons.accessibility_new,
-                    color: Colors.red,
-                    isGranted: _accessibilityGranted,
-                    onRequest: () async {
-                      await _platformService.requestAccessibilityPermission();
-                      await Future.delayed(const Duration(seconds: 2));
-                      _checkPermissions();
-                    },
-                    isImportant: true,
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Continue Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _allPermissionsGranted
-                    ? () {
-                        Navigator.of(context).pushReplacementNamed('/home');
-                      }
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: Text(
-                  _allPermissionsGranted
-                      ? 'Continue to App'
-                      : 'Grant All Permissions First',
-                  style: const TextStyle(fontSize: 16),
+      backgroundColor: const Color(0xFF050A1A),
+      body: Stack(
+        children: [
+          // Background Aesthetic Orbs
+          Positioned(
+            top: -150,
+            right: -100,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [Colors.blue.withOpacity(0.08), Colors.transparent],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+          Positioned(
+            bottom: -150,
+            left: -100,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [Colors.purple.withOpacity(0.05), Colors.transparent],
+                ),
+              ),
+            ),
+          ),
+
+          SafeArea(
+            child: Column(
+              children: [
+                // Custom Header with Progress Indicator
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 20,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        'STEP ${_currentPage + 1}',
+                        style: const TextStyle(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                          letterSpacing: 2.0,
+                        ),
+                      ),
+                      const Spacer(),
+                      Row(
+                        children: List.generate(
+                          4,
+                          (index) => _buildIndicator(index),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Onboarding Pages Content
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    physics:
+                        const NeverScrollableScrollPhysics(), // Sequential flow
+                    onPageChanged: (index) {
+                      setState(() => _currentPage = index);
+                    },
+                    children: [
+                      _buildOnboardingStep(
+                        title: l10n.onboardingUsageTitle,
+                        description: l10n.onboardingUsageDesc,
+                        icon: Icons.bar_chart_rounded,
+                        color: Colors.blue,
+                        isGranted: _usageStatsGranted,
+                        l10n: l10n,
+                        onRequest: () async {
+                          await _platformService.requestUsageStatsPermission();
+                          // Polling or delay to check status
+                          await Future.delayed(const Duration(seconds: 2));
+                          _checkPermissions();
+                        },
+                      ),
+                      _buildOnboardingStep(
+                        title: l10n.onboardingOverlayTitle,
+                        description: l10n.onboardingOverlayDesc,
+                        icon: Icons.layers_rounded,
+                        color: Colors.purpleAccent,
+                        isGranted: _overlayGranted,
+                        l10n: l10n,
+                        onRequest: () async {
+                          await _platformService.requestOverlayPermission();
+                          await Future.delayed(const Duration(seconds: 2));
+                          _checkPermissions();
+                        },
+                      ),
+                      _buildOnboardingStep(
+                        title: l10n.onboardingAccessibilityTitle,
+                        description: l10n.onboardingAccessibilityDesc,
+                        icon: Icons.accessibility_new_rounded,
+                        color: Colors.orangeAccent,
+                        isGranted: _accessibilityGranted,
+                        l10n: l10n,
+                        onRequest: () async {
+                          await _platformService
+                              .requestAccessibilityPermission();
+                          await Future.delayed(const Duration(seconds: 2));
+                          _checkPermissions();
+                        },
+                      ),
+                      _buildOnboardingStep(
+                        title: l10n.onboardingNotificationTitle,
+                        description: l10n.onboardingNotificationDesc,
+                        icon: Icons.notifications_active_rounded,
+                        color: Colors.tealAccent,
+                        isGranted: _notificationListenerGranted,
+                        l10n: l10n,
+                        onRequest: () async {
+                          await _platformService
+                              .requestNotificationListenerPermission();
+                          await Future.delayed(const Duration(seconds: 2));
+                          _checkPermissions();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Bottom Action Area
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(32, 0, 32, 40),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    width: double.infinity,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        if (_isCurrentPermissionGranted)
+                          BoxShadow(
+                            color: Colors.blue.withOpacity(0.3),
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: _isCurrentPermissionGranted ? _onNext : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.white.withOpacity(0.05),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        _currentPage == 3
+                            ? l10n.onboardingStart
+                            : l10n.onboardingNext,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildPermissionCard({
+  bool get _isCurrentPermissionGranted {
+    if (_currentPage == 0) return _usageStatsGranted;
+    if (_currentPage == 1) return _overlayGranted;
+    if (_currentPage == 2) return _accessibilityGranted;
+    if (_currentPage == 3) return _notificationListenerGranted;
+    return false;
+  }
+
+  Widget _buildIndicator(int index) {
+    bool isActive = _currentPage == index;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      margin: const EdgeInsets.only(left: 6),
+      height: 6,
+      width: isActive ? 24 : 6,
+      decoration: BoxDecoration(
+        color: isActive ? Colors.blue : Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(3),
+      ),
+    );
+  }
+
+  Widget _buildOnboardingStep({
     required String title,
     required String description,
     required IconData icon,
     required Color color,
     required bool isGranted,
+    required AppLocalizations l10n,
     required VoidCallback onRequest,
-    bool isImportant = false,
   }) {
-    return Card(
-      elevation: isImportant ? 4 : 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: color, size: 32),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Visual Illustration Area
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              // Outer Glow
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 800),
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isGranted
+                      ? Colors.green.withOpacity(0.05)
+                      : color.withOpacity(0.05),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              title,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          Icon(
-                            isGranted ? Icons.check_circle : Icons.cancel,
-                            color: isGranted ? Colors.green : Colors.red,
-                          ),
-                        ],
-                      ),
-                      if (isImportant)
-                        Container(
-                          margin: const EdgeInsets.only(top: 4),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'IMPORTANT',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                    ],
+              ),
+              // Glass Circle
+              Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.03),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.05),
+                    width: 1,
                   ),
                 ),
-              ],
+                child: Icon(
+                  icon,
+                  size: 64,
+                  color: isGranted ? Colors.green : color,
+                ),
+              ),
+              // Status Badge
+              if (isGranted)
+                Positioned(
+                  bottom: 5,
+                  right: 5,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Colors.green,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 60),
+
+          // Narrative
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
             ),
-            const SizedBox(height: 12),
-            Text(
-              description,
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            description,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.6),
+              fontSize: 16,
+              height: 1.6,
             ),
-            const SizedBox(height: 12),
+          ),
+          const SizedBox(height: 50),
+
+          // Action
+          if (!isGranted)
             SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: isGranted ? null : onRequest,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isGranted ? Colors.green : color,
+              width: 220,
+              height: 54,
+              child: OutlinedButton(
+                onPressed: onRequest,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: color.withOpacity(0.4), width: 1.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
                 child: Text(
-                  isGranted ? 'Granted ✓' : 'Grant Permission',
-                  style: const TextStyle(fontSize: 14),
+                  l10n.onboardingEnable,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Text(
+                l10n.permissionGranted.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.green,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                  letterSpacing: 1.0,
                 ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

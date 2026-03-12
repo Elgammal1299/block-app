@@ -19,6 +19,8 @@ import '../../../../core/router/app_routes.dart';
 import '../widgets/home/quick_stat_card.dart';
 import '../widgets/home/quick_action_card.dart';
 import '../widgets/app_category_filter.dart';
+import '../widgets/home/modes_row.dart';
+import '../../../../core/theme/app_theme.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -117,10 +119,10 @@ class _HomeScreenState extends State<HomeScreen> {
         BlocProvider.value(value: getIt<UsageLimitCubit>()),
       ],
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           centerTitle: true,
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.transparent,
           elevation: 0,
           leadingWidth: 80,
 
@@ -142,7 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: CircleAvatar(
                     radius: 20,
-                    backgroundColor: Colors.white,
+                    backgroundColor: Theme.of(context).colorScheme.surface,
                     child: Image.asset(
                       'assets/images/logo.png',
                       width: 40,
@@ -154,11 +156,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               Text(
                 'App Block',
-                style: TextStyle(
-                  color: Color(0xFF333333),
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -175,25 +175,29 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Quick Stats Cards (Solid Red for Blocked)
-                  _buildQuickStatsCards(context),
-                  const SizedBox(height: 20),
-
                   // Quick Block Card
                   _buildQuickBlockCard(context),
                   const SizedBox(height: 24),
 
                   // Quick Actions Section (2x2 Grid)
                   _buildQuickActionsGrid(context),
+                  const SizedBox(height: 32),
+
+                  // Focus Modes Row
+                  const ModesRow(),
 
                   // Search and Filter Section
-                  _buildSearchAndFilter(context),
+                  // _buildSearchAndFilter(context),
 
                   // Active Schedules Section
-                  _buildSchedulesPreview(context),
+                  // _buildSchedulesPreview(context),
 
                   // Blocked Apps Preview
-                  _buildBlockedAppsPreview(context),
+                  // _buildBlockedAppsPreview(context),
+                  // Quick Stats Cards (Solid Red for Blocked)
+                  const SizedBox(height: 20),
+                  _buildQuickStatsCards(context),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -211,14 +215,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildQuickBlockCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -232,19 +239,11 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 // Start Button
                 ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1877F2),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
+                  onPressed: () {
+                    // This button should ideally switch to the Focus tab
+                    // For now, we'll just keep it as is or navigate to focus lists if available
+                    Navigator.of(context).pushNamed(AppRoutes.focusLists);
+                  },
                   child: const Row(
                     children: [
                       Icon(Icons.play_arrow_rounded, size: 20),
@@ -263,12 +262,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Row(
                       children: [
-                        const Text(
+                        Text(
                           'الحظر السريع',
-                          style: TextStyle(
-                            fontSize: 20,
+                          style: theme.textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF333333),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -279,9 +276,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       'قم بحظر المشتتات بضغطة واحدة',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.textTheme.bodySmall?.color?.withValues(
+                          alpha: 0.6,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -290,36 +291,42 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           // Divider and bottom section
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+            padding: const EdgeInsets.symmetric(
+              vertical: AppTheme.spacing12,
+              horizontal: AppTheme.spacing20,
+            ),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F7FF),
+              color: colorScheme.primary.withValues(alpha: 0.05),
               borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
+                bottomLeft: Radius.circular(AppTheme.radiusLarge),
+                bottomRight: Radius.circular(AppTheme.radiusLarge),
               ),
-              border: Border(top: BorderSide(color: Colors.blue.shade50)),
+              border: Border(
+                top: BorderSide(
+                  color: colorScheme.primary.withValues(alpha: 0.1),
+                ),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   Icons.timer_outlined,
-                  color: Colors.blue.shade700,
+                  color: colorScheme.primary,
                   size: 18,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   'المؤقت & طريقة البومودورو',
-                  style: TextStyle(
-                    color: Colors.blue.shade700,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: colorScheme.primary,
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
                   ),
                 ),
                 const SizedBox(width: 8),
-                Icon(
+                const Icon(
                   Icons.auto_awesome,
-                  color: Colors.orange.shade400,
+                  color: AppTheme.accentWarning,
                   size: 16,
                 ),
               ],
@@ -356,33 +363,35 @@ class _HomeScreenState extends State<HomeScreen> {
                   limitsCount = usageLimitState.limits.length;
                 }
 
-                return Row(
+                return Column(
                   children: [
                     QuickStatCard(
                       label: 'محظور',
                       value: blockedCount.toString(),
                       icon: Icons.block,
-                      color: const Color(0xFFEF4444),
+                      color: AppTheme.accentError,
                       isSolid: true, // Matching mockup (Red card)
                       onTap: () => Navigator.of(
                         context,
                       ).pushNamed(AppRoutes.blockedAppsList),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(height: 12),
                     QuickStatCard(
                       label: 'جداول نشطة',
                       value: schedulesCount.toString(),
                       icon: Icons.schedule,
-                      color: const Color(0xFF10B981),
+                      color: AppTheme.accentSuccess,
+                      isSolid: true,
                       onTap: () =>
                           Navigator.of(context).pushNamed(AppRoutes.schedules),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(height: 12),
                     QuickStatCard(
                       label: 'حدود استخدام',
                       value: limitsCount.toString(),
                       icon: Icons.timer,
-                      color: const Color(0xFFF59E0B),
+                      color: AppTheme.accentWarning,
+                      isSolid: true,
                       onTap: () => Navigator.of(
                         context,
                       ).pushNamed(AppRoutes.usageLimitSelection),
@@ -410,21 +419,21 @@ class _HomeScreenState extends State<HomeScreen> {
           title: 'حظر التطبيقات',
           subtitle: 'إضافة تطبيق للحظر',
           icon: Icons.add_circle_outline,
-          color: const Color(0xFFEF4444),
+          color: AppTheme.accentError,
           onTap: () => Navigator.of(context).pushNamed(AppRoutes.appSelection),
         ),
         QuickActionCard(
           title: 'جداول زمنية',
           subtitle: 'حظر حسب الوقت',
           icon: Icons.calendar_today,
-          color: const Color(0xFF10B981),
+          color: AppTheme.accentSuccess,
           onTap: () => Navigator.of(context).pushNamed(AppRoutes.schedules),
         ),
         QuickActionCard(
           title: 'حدود الاستخدام',
           subtitle: 'تحديد حدود يومية',
           icon: Icons.timer_outlined,
-          color: const Color(0xFFF59E0B),
+          color: AppTheme.accentWarning,
           onTap: () =>
               Navigator.of(context).pushNamed(AppRoutes.usageLimitSelection),
         ),
@@ -432,7 +441,7 @@ class _HomeScreenState extends State<HomeScreen> {
           title: 'قائمة المحظورات',
           subtitle: 'عرض كل المحظورات',
           icon: Icons.list_alt,
-          color: const Color(0xFF8B5CF6),
+          color: AppTheme.accentInfo,
           onTap: () =>
               Navigator.of(context).pushNamed(AppRoutes.blockedAppsList),
         ),
@@ -441,6 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSearchAndFilter(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -449,8 +459,13 @@ class _HomeScreenState extends State<HomeScreen> {
           controller: _searchController,
           decoration: InputDecoration(
             hintText: 'ابحث عن تطبيق...',
-            hintStyle: TextStyle(color: Colors.grey[400]),
-            prefixIcon: const Icon(Icons.search, color: Color(0xFF1877F2)),
+            hintStyle: theme.textTheme.bodySmall?.copyWith(
+              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.4),
+            ),
+            prefixIcon: Icon(
+              Icons.search,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             suffixIcon: _searchQuery.isNotEmpty
                 ? IconButton(
                     icon: const Icon(Icons.clear),
@@ -463,7 +478,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   )
                 : null,
             filled: true,
-            fillColor: Colors.white,
+            fillColor: theme.colorScheme.surface,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(20),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -473,8 +488,11 @@ class _HomeScreenState extends State<HomeScreen> {
               borderSide: BorderSide(color: Colors.grey.shade300),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(20),
-              borderSide: const BorderSide(color: Color(0xFF1877F2), width: 2),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              borderSide: BorderSide(
+                color: Theme.of(context).colorScheme.primary,
+                width: 2,
+              ),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 20,
@@ -662,30 +680,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEmptySchedules() {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppTheme.spacing24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+        ),
       ),
       child: Column(
         children: [
-          Icon(Icons.schedule_outlined, size: 48, color: Colors.grey.shade400),
+          Icon(
+            Icons.schedule_outlined,
+            size: 48,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+          ),
           const SizedBox(height: 12),
           Text(
             'لا توجد جداول نشطة',
-            style: TextStyle(
-              fontSize: 16,
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: Colors.grey.shade700,
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            'أنشئ جدولاً جديداً للبدء',
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-          ),
+          Text('أنشئ جدولاً جديداً للبدء', style: theme.textTheme.bodySmall),
         ],
       ),
     );
@@ -733,12 +753,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.outline.withValues(alpha: 0.1),
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
+                        color: Colors.black.withValues(alpha: 0.03),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -801,12 +825,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFEF4444).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
+                          color: AppTheme.accentError.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusSmall,
+                          ),
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.block,
-                          color: Color(0xFFEF4444),
+                          color: AppTheme.accentError,
                           size: 24,
                         ),
                       ),
@@ -823,30 +849,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEmptyBlockedApps() {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(AppTheme.spacing32),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+        ),
       ),
       child: Column(
         children: [
-          Icon(Icons.block_outlined, size: 64, color: Colors.grey.shade400),
+          Icon(
+            Icons.block_outlined,
+            size: 64,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
+          ),
           const SizedBox(height: 16),
           Text(
             'لا توجد تطبيقات محظورة',
-            style: TextStyle(
-              fontSize: 18,
+            style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: Colors.grey.shade700,
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            'ابدأ بحظر تطبيق الآن!',
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
-          ),
+          Text('ابدأ بحظر تطبيق الآن!', style: theme.textTheme.bodySmall),
           const SizedBox(height: 20),
           ElevatedButton.icon(
             onPressed: () {
@@ -854,14 +882,6 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             icon: const Icon(Icons.add),
             label: const Text('حظر تطبيق'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
           ),
         ],
       ),

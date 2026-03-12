@@ -15,18 +15,19 @@ class FlipClockTimer extends StatelessWidget {
     final minutesStr = minutes.toString().padLeft(2, '0');
     final secondsStr = seconds.toString().padLeft(2, '0');
 
+    final theme = Theme.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         FlipClockDigit(digit: minutesStr[0]),
         const SizedBox(width: 8),
         FlipClockDigit(digit: minutesStr[1]),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
             ':',
             style: TextStyle(
-              color: Colors.white,
+              color: theme.colorScheme.onSurface,
               fontSize: 60,
               fontWeight: FontWeight.bold,
             ),
@@ -56,7 +57,7 @@ class FlipClockDigit extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -70,7 +71,10 @@ class FlipClockDigit extends StatelessWidget {
             top: 60,
             left: 0,
             right: 0,
-            child: Container(height: 1, color: Colors.black.withOpacity(0.4)),
+            child: Container(
+              height: 1,
+              color: Colors.black.withValues(alpha: 0.4),
+            ),
           ),
           // Digit
           Text(

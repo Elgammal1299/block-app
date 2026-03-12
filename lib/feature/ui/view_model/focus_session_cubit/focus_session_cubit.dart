@@ -14,7 +14,7 @@ class FocusSessionCubit extends Cubit<FocusSessionState> {
   FocusSession? _currentSession;
 
   FocusSessionCubit(this._focusRepository, this._settingsRepository)
-      : super(FocusSessionInitial()) {
+    : super(FocusSessionInitial()) {
     checkActiveSession();
   }
 
@@ -49,8 +49,10 @@ class FocusSessionCubit extends Cubit<FocusSessionState> {
     }
 
     try {
-      final success =
-          await _focusRepository.startSession(focusListId, durationMinutes);
+      final success = await _focusRepository.startSession(
+        focusListId,
+        durationMinutes,
+      );
 
       if (success) {
         final session = await _focusRepository.getActiveSession();
@@ -87,6 +89,24 @@ class FocusSessionCubit extends Cubit<FocusSessionState> {
       emit(FocusSessionError(e.toString()));
       return false;
     }
+  }
+
+  void pauseSession() {
+    if (_currentSession == null || state is! FocusSessionActive) return;
+
+    _stopTimer();
+    emit(
+      FocusSessionPaused(_currentSession!, _currentSession!.remainingSeconds),
+    );
+  }
+
+  void resumeSession() {
+    if (_currentSession == null || state is! FocusSessionPaused) return;
+
+    _startTimer();
+    emit(
+      FocusSessionActive(_currentSession!, _currentSession!.remainingSeconds),
+    );
   }
 
   Future<void> _completeSession() async {

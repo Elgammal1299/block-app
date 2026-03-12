@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/theme/app_theme.dart';
 
 class QuickActionCard extends StatelessWidget {
   final String title;
@@ -18,12 +19,13 @@ class QuickActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
           boxShadow: [
             BoxShadow(
               color: color.withOpacity(0.2),
@@ -54,8 +56,7 @@ class QuickActionCard extends StatelessWidget {
                     Flexible(
                       child: Text(
                         title,
-                        style: const TextStyle(
-                          fontSize: 14,
+                        style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),

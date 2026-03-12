@@ -140,7 +140,10 @@ class CachedPreferencesService {
 
   /// Update block attempts with debounce invalidation
   Future<bool> updateBlockAttempts(String packageName, int attempts) async {
-    final result = await _prefsService.updateBlockAttempts(packageName, attempts);
+    final result = await _prefsService.updateBlockAttempts(
+      packageName,
+      attempts,
+    );
     if (result) {
       _debouncedInvalidateBlockedApps();
     }
@@ -293,6 +296,15 @@ class CachedPreferencesService {
   Future<List<dynamic>> _loadFocusSessions() async {
     _cachedFocusSessions = [];
     return _cachedFocusSessions ?? [];
+  }
+
+  // ==================== Onboarding ====================
+  Future<bool> getOnboardingCompleted() async {
+    return await _prefsService.getOnboardingCompleted();
+  }
+
+  Future<bool> setOnboardingCompleted(bool value) async {
+    return await _prefsService.setOnboardingCompleted(value);
   }
 
   /// ==================== Cleanup ====================

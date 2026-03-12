@@ -562,6 +562,19 @@ class SharedPrefsService {
         false;
   }
 
+  // ========== Onboarding ==========
+  Future<bool> getOnboardingCompleted() async {
+    return _preferences?.getBool(AppConstants.keyOnboardingCompleted) ?? false;
+  }
+
+  Future<bool> setOnboardingCompleted(bool value) async {
+    return await _preferences?.setBool(
+          AppConstants.keyOnboardingCompleted,
+          value,
+        ) ??
+        false;
+  }
+
   // ========== Clear All Data ==========
 
   Future<bool> clearAllData() async {

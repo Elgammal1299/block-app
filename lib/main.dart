@@ -91,13 +91,7 @@ void main() async {
         _startServicesInBackground();
       }
 
-      runApp(
-        MyApp(
-          initialRoute: allPermissionsGranted
-              ? AppRoutes.home
-              : AppRoutes.permissions,
-        ),
-      );
+      runApp(const MyApp(initialRoute: AppRoutes.splash));
     },
     (error, stack) {
       AppLogger.e('Global Uncaught Exception', error, stack);

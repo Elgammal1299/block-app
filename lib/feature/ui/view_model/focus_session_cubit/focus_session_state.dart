@@ -41,3 +41,13 @@ class FocusSessionError extends FocusSessionState {
   @override
   List<Object?> get props => [message];
 }
+
+class FocusSessionPaused extends FocusSessionState {
+  final FocusSession activeSession;
+  final int remainingSeconds;
+
+  const FocusSessionPaused(this.activeSession, this.remainingSeconds);
+
+  @override
+  List<Object?> get props => [activeSession, remainingSeconds];
+}

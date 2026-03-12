@@ -25,6 +25,7 @@ class AppConstants {
   static const String keyFocusModeConfigs = 'focus_mode_configs';
   static const String keyCustomFocusModes = 'custom_focus_modes';
   static const String keyUnlockChallengeConfig = 'unlock_challenge_config';
+  static const String keyOnboardingCompleted = 'onboarding_completed';
 
   // Challenge Types
   static const String challengeNone = 'none';

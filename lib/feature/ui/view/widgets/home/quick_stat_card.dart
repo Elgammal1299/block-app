@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../../core/theme/app_theme.dart';
 
 class QuickStatCard extends StatelessWidget {
   final String label;
@@ -20,53 +21,49 @@ class QuickStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-          decoration: BoxDecoration(
-            color: isSolid ? color : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: isSolid ? Colors.white : color,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(icon, color: isSolid ? Colors.white : color, size: 16),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: isSolid
-                      ? Colors.white.withOpacity(0.9)
-                      : Colors.grey[600],
-                  fontWeight: FontWeight.w500,
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSolid ? color : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+          border: isSolid
+              ? null
+              : Border.all(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.1),
                 ),
-                textAlign: TextAlign.center,
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  value,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: isSolid ? Colors.white : color,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(icon, color: isSolid ? Colors.white : color, size: 16),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontSize: 10,
+                color: isSolid
+                    ? Colors.white.withValues(alpha: 0.9)
+                    : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                fontWeight: FontWeight.w500,
               ),
-            ],
-          ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );

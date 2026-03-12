@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app_block/core/theme/app_theme.dart';
 import '../../../../../../core/DI/setup_get_it.dart';
 import '../../../../data/models/custom_focus_mode.dart';
 import '../../../view_model/custom_focus_mode_cubit/custom_focus_mode_cubit.dart';
@@ -8,10 +9,7 @@ import '../../../view_model/custom_focus_mode_cubit/custom_focus_mode_cubit.dart
 class SavedCustomModeCard extends StatelessWidget {
   final CustomFocusMode mode;
 
-  const SavedCustomModeCard({
-    super.key,
-    required this.mode,
-  });
+  const SavedCustomModeCard({super.key, required this.mode});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +19,7 @@ class SavedCustomModeCard extends StatelessWidget {
       elevation: 1,
       margin: const EdgeInsets.only(right: 12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
       ),
       child: InkWell(
         onTap: () {
@@ -44,13 +42,11 @@ class SavedCustomModeCard extends StatelessWidget {
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: _getTypeColor().withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.radiusMedium,
+                      ),
                     ),
-                    child: Icon(
-                      mode.icon,
-                      size: 24,
-                      color: _getTypeColor(),
-                    ),
+                    child: Icon(mode.icon, size: 24, color: _getTypeColor()),
                   ),
                   const SizedBox(width: 12),
 
@@ -185,7 +181,9 @@ class SavedCustomModeCard extends StatelessWidget {
                         vertical: 8,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
+                        ),
                       ),
                       elevation: 0,
                     ),
@@ -211,13 +209,13 @@ class SavedCustomModeCard extends StatelessWidget {
   Color _getTypeColor() {
     switch (mode.blockType) {
       case CustomModeBlockType.fullBlock:
-        return Colors.red.shade600;
+        return AppTheme.accentError;
 
       case CustomModeBlockType.timeBased:
-        return Colors.blue.shade600;
+        return AppTheme.accentInfo;
 
       case CustomModeBlockType.usageLimit:
-        return Colors.orange.shade600;
+        return AppTheme.accentWarning;
     }
   }
 
@@ -237,10 +235,7 @@ class SavedCustomModeCard extends StatelessWidget {
 
   /// تعديل الوضع
   void _editMode(BuildContext context) {
-    Navigator.of(context).pushNamed(
-      '/edit-custom-mode',
-      arguments: mode,
-    );
+    Navigator.of(context).pushNamed('/edit-custom-mode', arguments: mode);
   }
 
   /// حذف الوضع مع تأكيد
@@ -267,9 +262,7 @@ class SavedCustomModeCard extends StatelessWidget {
                 ),
               );
             },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: Text('حذف'),
           ),
         ],
