@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:app_block/core/theme/app_theme.dart';
+import 'package:app_block/core/router/app_routes.dart';
 import '../../../../../../core/DI/setup_get_it.dart';
 import '../../../../data/models/custom_focus_mode.dart';
 import '../../../view_model/custom_focus_mode_cubit/custom_focus_mode_cubit.dart';
+import '../../../view_model/focus_session_cubit/focus_session_cubit.dart';
 
 /// بطاقة لعرض وضع مخصص واحد محفوظ
 /// تحتوي على: الاسم، نوع الحظر، عدد التطبيقات، أزرار التعديل/الحذف/التفعيل
@@ -219,23 +221,25 @@ class SavedCustomModeCard extends StatelessWidget {
     }
   }
 
-  /// تفعيل الوضع
+  /// تفعيل الوضع — يبدأ جلسة تركيز حقيقية
   void _activateMode(BuildContext context) {
-    // سيتم تطبيق هذا لاحقاً عند ربطه بـ FocusSessionCubit
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('سيتم تفعيل وضع "${mode.name}" قريباً'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    final duration = mode.durationMinutes ?? 25;
+    final cubit = getIt<FocusSessionCubit>();
+    cubit.startSession(mode.id, duration);
 
     // تحديث آخر استخدام
     getIt<CustomFocusModeCubit>().updateLastUsed(mode.id);
+
+    // الانتقال لشاشة الجلسة النشطة
+    Navigator.of(context).pushNamed(AppRoutes.activeSession);
   }
 
-  /// تعديل الوضع
+  /// تعديل الوضع — فتح شاشة الإنشاء مع بيانات الوضع الموجود
   void _editMode(BuildContext context) {
-    Navigator.of(context).pushNamed('/edit-custom-mode', arguments: mode);
+    Navigator.of(context).pushNamed(
+      AppRoutes.createCustomMode,
+      arguments: mode,
+    );
   }
 
   /// حذف الوضع مع تأكيد

@@ -246,7 +246,7 @@ class _CreateCustomModeCard extends StatelessWidget {
       
         child: InkWell(
           onTap: () {
-            Navigator.of(context).pushNamed(AppRoutes.usageLimitSelection);
+            Navigator.of(context).pushNamed(AppRoutes.createCustomMode);
           },
           borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
           child: Padding(

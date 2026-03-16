@@ -5,6 +5,9 @@ class AppRoutes {
   static const permissions = '/permissions';
   static const home = '/home';
 
+  // Custom Focus Mode routes
+  static const createCustomMode = '/create-custom-mode';
+
   // Quick block routes
   static const quickBlockSettings = '/quick-block-settings';
   static const appSelectionForQuickBlock = '/app-selection-quick-block';

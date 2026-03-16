@@ -24,6 +24,8 @@ import 'package:app_block/feature/ui/view/screens/settings_screen.dart';
 import 'package:app_block/feature/ui/view/widgets/focus_mode_card.dart';
 import 'package:app_block/feature/ui/view/screens/create_schedule_screen.dart';
 import 'package:app_block/feature/data/models/blocked_app.dart';
+import 'package:app_block/feature/ui/view/screens/create_custom_mode_screen.dart';
+import 'package:app_block/feature/data/models/custom_focus_mode.dart';
 import 'package:app_block/feature/data/models/focus_list.dart';
 
 class AppRouter {
@@ -41,6 +43,13 @@ class AppRouter {
 
       case AppRoutes.home:
         return RouterTransitions.buildFade(const NabBarScreen());
+
+      // Custom Focus Mode routes
+      case AppRoutes.createCustomMode:
+        final existingMode = settings.arguments as CustomFocusMode?;
+        return RouterTransitions.buildVertical(
+          CreateCustomModeScreen(existingMode: existingMode),
+        );
 
       // App management routes
       case AppRoutes.appSelection:

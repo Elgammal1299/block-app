@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../ui/view_model/focus_session_cubit/focus_session_cubit.dart';
+import '../ui/view_model/focus_session_cubit/focus_session_state.dart';
+import '../../core/DI/setup_get_it.dart';
 import '../ui/view/screens/home_screen.dart';
 import '../ui/view/screens/statistics_dashboard_screen.dart';
 import '../ui/view/screens/settings_screen.dart';
@@ -64,36 +68,45 @@ class _NabBarScreenState extends State<NabBarScreen> {
         onPageChanged: _onPageChanged,
         children: _screens,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: _onItemTapped,
-        // Using a slight elevation and background color for a nice look
-        elevation: 3,
-        backgroundColor: theme.colorScheme.surface,
-        indicatorColor: theme.colorScheme.primaryContainer,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'الرئيسية',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.self_improvement_outlined),
-            selectedIcon: Icon(Icons.self_improvement),
-            label: 'التركيز',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: 'الإحصائيات',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'الإعدادات',
-          ),
-        ],
+      bottomNavigationBar: BlocBuilder<FocusSessionCubit, FocusSessionState>(
+        bloc: getIt<FocusSessionCubit>(),
+        builder: (context, state) {
+          final isFocusSessionRunning = state is FocusSessionActive || state is FocusSessionPaused;
+          if (_currentIndex == 1 && isFocusSessionRunning) {
+            return const SizedBox.shrink();
+          }
+          return NavigationBar(
+            selectedIndex: _currentIndex,
+            onDestinationSelected: _onItemTapped,
+            // Using a slight elevation and background color for a nice look
+            elevation: 3,
+            backgroundColor: theme.colorScheme.surface,
+            indicatorColor: theme.colorScheme.primaryContainer,
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon: Icon(Icons.home_rounded),
+                label: 'الرئيسية',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.self_improvement_outlined),
+                selectedIcon: Icon(Icons.self_improvement),
+                label: 'التركيز',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.bar_chart_outlined),
+                selectedIcon: Icon(Icons.bar_chart),
+                label: 'الإحصائيات',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.settings_outlined),
+                selectedIcon: Icon(Icons.settings),
+                label: 'الإعدادات',
+              ),
+            ],
+          );
+        },
       ),
     );
   }
