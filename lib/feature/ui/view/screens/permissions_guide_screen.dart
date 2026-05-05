@@ -4,6 +4,7 @@ import '../../../../core/services/cached_prefs_service.dart';
 import '../../../../core/DI/setup_get_it.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/localization/app_localizations.dart';
+import 'accessibility_disclosure_screen.dart';
 
 class PermissionsGuideScreen extends StatefulWidget {
   const PermissionsGuideScreen({super.key});
@@ -197,10 +198,37 @@ class _PermissionsGuideScreenState extends State<PermissionsGuideScreen> {
                         isGranted: _accessibilityGranted,
                         l10n: l10n,
                         onRequest: () async {
-                          await _platformService
-                              .requestAccessibilityPermission();
-                          await Future.delayed(const Duration(seconds: 2));
-                          _checkPermissions();
+                          // ── Google Play Prominent Disclosure Requirement ──
+                          // Show disclosure screen BEFORE opening Android settings.
+                          // The user must acknowledge what the service does and
+                          // does NOT do before being sent to grant the permission.
+                          await showModalBottomSheet<void>(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (_) => DraggableScrollableSheet(
+                              initialChildSize: 0.92,
+                              minChildSize: 0.70,
+                              maxChildSize: 0.95,
+                              builder: (_, scrollController) =>
+                                  ClipRRect(
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(24),
+                                    ),
+                                    child: AccessibilityDisclosureScreen(
+                                      onAccepted: () async {
+                                        Navigator.of(context).pop(); // close sheet
+                                        await _platformService
+                                            .requestAccessibilityPermission();
+                                        await Future.delayed(
+                                          const Duration(seconds: 2),
+                                        );
+                                        _checkPermissions();
+                                      },
+                                    ),
+                                  ),
+                            ),
+                          );
                         },
                       ),
                       _buildOnboardingStep(
